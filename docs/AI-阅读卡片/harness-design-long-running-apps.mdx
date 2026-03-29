@@ -4,7 +4,7 @@ description: 一篇关于长任务、状态外置和生成-评估闭环的工程
 slug: harness-design-long-running-apps
 tags: [AI, Harness, Long-running]
 source: https://www.anthropic.com/engineering/harness-design-long-running-apps
-dateRead: 2026-03-28
+dateRead: 2026-03-29
 ---
 
 import ReadingCardMeta from '@site/src/components/ReadingCardMeta';
@@ -13,6 +13,8 @@ import Callout from '@site/src/components/Callout';
 # 让 AI 真正跑完一场“长项目”：Anthropic 的 Harness 设计思路
 
 <!-- truncate -->
+
+<ReadingCardMeta tags={["AI", "Harness", "Long-running"]} source="https://www.anthropic.com/engineering/harness-design-long-running-apps" dateRead="2026-03-29" />
 
 <Callout type="info" title="一句话先看懂">
 长任务的难点不在“会不会写”，而在“能不能持续写、持续验证、持续修正”。
@@ -184,13 +186,3 @@ Evaluator 不只是看代码，而是更接近真人 QA：
 - 结果可验证
 
 换句话说，AI 的进步会越来越像工程体系的进步，而不只是模型参数的增长。
-
-## 五、总结
-
-### 5.1 一句话总结
-Anthropic 这篇文章的核心观点是：**要让 AI 真正胜任长时间软件开发，关键不是让它更会说，而是给它一套能持续规划、执行、评估和修正的 harness。**
-
-### 5.2 最值得记住的三点
-1. 长任务的难点在连续性，不在单次生成。
-2. 生成和评估必须分开，才能形成有效闭环。
-3. 复杂开发最需要的不是“更大回答”，而是“更稳流程”。
