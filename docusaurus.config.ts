@@ -23,7 +23,10 @@ const config: Config = {
     [
       'classic',
       {
-        docs: false,
+        docs: {
+          sidebarPath: './sidebars.ts',
+          routeBasePath: '/',
+        },
         blog: {
           showReadingTime: true,
           blogTitle: '博客',
@@ -56,7 +59,7 @@ const config: Config = {
         src: 'img/logo.svg',
       },
       items: [
-        {to: '/blog', label: 'Blog', position: 'left'},
+        {to: '/', label: 'Docs', position: 'left'},
         {href: 'https://github.com/xxxdcat/xixi-blog', label: 'GitHub', position: 'right'},
       ],
     },
@@ -66,7 +69,7 @@ const config: Config = {
         {
           title: '内容',
           items: [
-            {label: 'Blog', to: '/blog'},
+            {label: 'Docs', to: '/'},
           ],
         },
         {

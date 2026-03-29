@@ -1,0 +1,8 @@
+{
+  "label": "AI-阅读卡片",
+  "position": 1,
+  "link": {
+    "type": "generated-index",
+    "description": "记录对 AI、工程和长期工作的阅读卡片。"
+  }
+}
