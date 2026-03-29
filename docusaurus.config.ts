@@ -60,6 +60,7 @@ const config: Config = {
       },
       items: [
         {to: '/', label: 'Docs', position: 'left'},
+        {to: '/tag-index', label: 'Tags', position: 'left'},
         {href: 'https://github.com/XDcat/xixi-blog', label: 'GitHub', position: 'right'},
       ],
     },
