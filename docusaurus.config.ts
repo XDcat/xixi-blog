@@ -60,7 +60,7 @@ const config: Config = {
       },
       items: [
         {to: '/', label: 'Docs', position: 'left'},
-        {href: 'https://github.com/xxxdcat/xixi-blog', label: 'GitHub', position: 'right'},
+        {href: 'https://github.com/XDcat/xixi-blog', label: 'GitHub', position: 'right'},
       ],
     },
     footer: {
@@ -75,7 +75,7 @@ const config: Config = {
         {
           title: '外部',
           items: [
-            {label: 'GitHub', href: 'https://github.com/xxxdcat/xixi-blog'},
+            {label: 'GitHub', href: 'https://github.com/XDcat/xixi-blog'},
           ],
         },
       ],
