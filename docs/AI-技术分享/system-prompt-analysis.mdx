@@ -48,6 +48,8 @@ import ReadingCardMeta from '@site/src/components/ReadingCardMeta';
 - `memory_*`：长期记忆搜索与读取
 - `tts`：语音输出
 
+这套工具体系说明，系统不是让模型“说得更像人”，而是让它“真的能做事”。
+
 ### 2.2 工具调用风格
 System Prompt 对工具调用风格要求很清楚：
 
@@ -114,7 +116,7 @@ System Prompt 强制要求在回复前扫描 available_skills 的描述，判断
 
 这意味着长任务可以持续推进，而不必一直携带全部原始上下文。
 
-这份 System Prompt 传达的思路是：**用摘要和状态保存，代替无限上下文。**
+OpenClaw 对长任务的思路不是无限记忆，而是摘要化状态保存。
 
 ## 六、心跳与 cron：让系统自己动起来
 
