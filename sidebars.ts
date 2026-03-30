@@ -11,7 +11,9 @@ const sidebars: SidebarsConfig = {
     {
       type: 'category',
       label: 'AI-技术分享',
-      items: ['AI-技术分享/openclaw-principles', 'AI-技术分享/system-prompt-analysis'],
+      items: ['AI-技术分享/openclaw-principles', 'AI-技术分享/system-prompt-analysis',
+        'AI-技术分享/1', 'AI-技术分享/「分析」System Prompt'
+      ],
     },
   ],
 };

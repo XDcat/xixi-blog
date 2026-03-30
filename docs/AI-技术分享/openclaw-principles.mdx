@@ -1,282 +1,687 @@
----
-title: 🦞OpenClaw 原理解析与思考总结
-description: 从工具、Agent Loop、记忆、上下文压缩到 24h 常驻运行，拆解 OpenClaw 的产品与技术原理。
-slug: openclaw-principles
-tags: [OpenClaw, Agent, MCP, Skills, Memory]
-dateRead: 2026-03-29
-source: https://www.yuque.com/xiaodai-tehze/lah8hg/ey63ua682eylerth
----
-
-import ReadingCardMeta from '@site/src/components/ReadingCardMeta';
-import Callout from '@site/src/components/Callout';
-
-# 🦞OpenClaw 原理解析与思考总结
-
-<!-- truncate -->
-
-<ReadingCardMeta tags={["OpenClaw", "Agent", "MCP", "Skills", "Memory"]} source="https://www.yuque.com/xiaodai-tehze/lah8hg/ey63ua682eylerth" dateRead="2026-03-29" />
-
-<Callout type="info" title="一句话总结">
-OpenClaw 本质上是一个“全副武装的 Agent”：把对话、工具、技能、记忆、上下文压缩和 24h 运行环境整合到一起。
-</Callout>
-
 ## 一、OpenClaw 到底是什么？
-
 ### 1.1 OpenClaw 是什么？
-<Callout type="warning" title="核心判断">
-OpenClaw 本质上是一个「Agent」，或者说是一个「全副武装的 Agent」。
-</Callout>
+:::note
+OpenClaw 本质上是一个「Agent」，或者说是一个「全副武装的Agent」。
 
-OpenClaw 是一个产品上的创新，让「大众」能够「真正便捷」地用到 AI 的众多生态，例如 Agent、MCP、Skills 等。技术上的创新，是对 AI 生态进行整合；交互上的创新，是提出了「24h 不停机」的理念。底层技术原理仍然是现有那一套，例如 Agent 自主规划执行、Skills 等。
+:::
+
+OpenClaw 是一个产品上的创新，让「大众」能够「真正便捷」的用到 AI 的众多生态，例如Agent、MCP、Skills 等。技术上的创新是「对 AI 生态进行整合」，以及在交互上提出了「24h 不停机」的理念。但是底层技术原理还是现有的那一套，如 Agent 自主规划执行、Skills 等。
 
 ### 1.2 为什么说 OpenClaw 是做 AI 整合，而不是底层架构升级？
-近年来 AI 工具从单纯的 Chat，发展到 Agent、MCP、Skills 等丰富生态。OpenClaw 真正做的事情，是提高这些工具使用的下限和效果，而不是改变它们能力的上限。
+下表是近年来 AI 工具的发展中标志性的工具，从最初单纯的 Chat 到如今丰富的生态（Agent、MCP、Skills 等）。而 OpenClaw 真正能做的事情，无法超出以下工具能力的范围。**<font style="background-color:#FBDE28;">通过后面章节了解其原理后，相信你也会有类似的想法。</font>**
 
-| AI 工具 | 代表 | 特点 | 关键技术 |
+:::note
+OpenClaw 真正做的是提高以下工具使用成本和效果的下限，但无法改变上限。
+
+:::
+
+| **AI 工具** | **代表** | **特点** | **关键技术** |
 | --- | --- | --- | --- |
-| Chat 对话 | ChatGPT | 只能对话，切换会话后记忆清空 | Transformer |
-| 编码工具 | Cursor | 代码 Tab 续写；Agent 做局部代码新增与修改 | Code Tab, Agent |
-| 个人助理 | Manus | 与其他软件交互，自动化做编码以外的事情 | ReAct |
-| 增强版 AI 编码工具 | Claude Code | 更加自动化；借助 MCP、Skills、记忆能力完成更复杂任务 | MCP, Skills, ACP |
+| Chat 对话 | ChatGPT | 只能对话，切换会话后记忆清空。 | Transformer |
+| 编码工具 | Cursor | 代码 Tab 续写；Agent 去完成局部代码的新增后修改。 | Code Tab, Agent |
+| 个人助理 | Manus | 与其他软件交互，自动化做编码以外的事情。 | ReAct |
+| 增强版 AI 编码工具 | Claude Code | 更加「自动化」<br/>+ 感知能力：MCP 和外部软件进行交互<br/>+ 专业能力：Skills 做特定事情上更加稳定高效<br/>+ 记忆能力：让模型能够记住会话、偏好、经验等 | MCP, Skills, ACP |
+
 
 ### 1.3 OpenClaw 解决的问题？
-![OpenClaw 解决的问题](https://cdn.nlark.com/yuque/0/2026/png/43125484/1773631698366-ccf458b3-b169-489a-9cdf-9a575dda651f.png)
+<!-- 这是一张图片，ocr 内容为：OPENCLAW解决的问题 传统模式的局限性 OPENCLAW的赋能 非程序员 程序员 非程序员 程序员 24/7 OPENCLAW PAUSED 解决方案 仅限于CHAT对话 24/7自动化服务 全功能智能体 依赖IDE/CLI 基于SERVER运行,24 真正利用长期记忆和 技术隔阂:无法使用 依赖IDE/CLI,关机 MCP/SKILLS,AI成为 即停.难以自动化复 小时不停工作,实现真 长期记忆,MCP, 复杂,长周期的任务. 正的自动化任务处理. 你的全能助手. SKILLS等高级功能. -->
+![](https://cdn.nlark.com/yuque/0/2026/png/43125484/1773631698366-ccf458b3-b169-489a-9cdf-9a575dda651f.png)
 
 它解决两个问题：
 
-1. **对非程序员来说**，让人真正用上 Skills、Memory、MCP 等新能力，而不是只停留在 Chat。
-2. **对程序员来说**，让 AI 能 24 小时不停地干活。
+1. **对于非程序员来说，能够真正用上 Skills、Memory、MCP 等较新的 AI 技术，而不仅仅停留在 Chat 模式。**
+2. **对于程序员来说，能够让 AI 24 小时不停的干活。这也是 Openclaw 诞生的原因。**
 
-#### 从非程序员角度看
-普通人真正接触到的往往还是 Chat 对话工具；对长期记忆、MCP、Skills 这类能力并不熟悉。OpenClaw 的意义，是把这些能力变成“能被日常使用的东西”。
+---
 
-普通人的核心需求大概有两类：
+**从非程序员的角度分析**
 
-- 能自定义机器人，并记住之前做过的事情 → 长期记忆
-- 能真正做事情，例如管理邮件、分析股票、写文档 → MCP、Skills
+AI 应用技术发展的很快，但对于普通人真正能用到多少呢？以上一节的表格为例，真正用到的还是 Chat 对话工具，例如豆包、千问、deepseek等；普通人用不到 Cursor、Claude Code 等编码工具；Manus 也是不温不火。再回到技术本身，例如长短期记忆、MCP、Skills 等，普通人基本上都接触不到。<font style="color:#DF2A3F;">到头来，用的还是 Chat 对话，你一言，AI 一语；还是那个新建会话啥都忘记，啥都不会做的机器人。</font>
 
-而这些，OpenClaw 做到了。
+回过头来，普通人对于 AI 工具的诉求是什么？我觉得有以下几点：
 
-#### 从程序员角度看
-增强版 AI 编码工具已经能覆盖很多能力，但使用方式仍有问题：
++ <font style="color:#DF2A3F;">能自定义机器人，并且记住之前做的事情 -> 长期记忆</font>
++ <font style="color:#DF2A3F;">能真正做事情，例如管理邮件、分析股票、写文档等 -> MCP、Skills</font>
 
-- 需要在特定电脑上、用特定方式对话，例如 CLI 或 IDE
-- 一旦关掉电脑，任务就停了
-- 仍然更偏编码任务，难以和日常工具打通
+而这些 OpenClaw 做到了。
 
-<Callout type="danger" title="关键点">
-即使有了增强版 AI 编码工具，仍然常常是“程序员陪着 AI 做事情”，而 OpenClaw 试图把任务变成 24h 常驻运行。
-</Callout>
+**从程序员的角度分析**
+
+对于专业人士，具体指程序员，一款增强版 AI 编码工具（如 Claude Code、Cursor等）基本上就足够了，能用到长短期记忆、Skills、MCP等技术，能写代码、写文档、任务规划等。如果真有 AI 实现不了的功能，也能驱动 AI 写程序来完成特定的任务。但是在交互方式上，有以下问题：
+
++ 需要在特定电脑上，以特定方式进行对话，例如 CLI or IDE；
++ 一旦关了电脑，任务就停下来了。
++ 专注于编码任务，还是难以和日常生活中的其他任务打通，例如日程管理、邮件管理等。
+
+<font style="color:#DF2A3F;">总的来说，即使有了增强版 AI 编码工具，让人需要「程序员陪着 AI 做事情」，以及「难以打通其他工具」。而 OpenClaw 解决了这些问题，通过 24h 运行的 Server，24h 不间断的接收指令并完成任务。</font>
 
 ### 1.4 为什么 OpenClaw 能够火起来？
-原因很直接：
+有以下一些原因：
 
-- 对用户来说，它解决了“AI 工具不好用、用不上”的问题
-- 对 AI 公司来说，它把 token 的消耗场景做大了
-- 对技术发展来说，它把零散能力整合成了一个现象级产品
-- 现实驱动也很强：落后就要挨打，必须推，也不得不推
++ 从使用人的角度，OpenClaw 解决了上一节提到的问题，让 AI 工具能够大范围用起来。
++ 从 AI 公司的角度，终于找到机会大范围卖 token 了。
++ 从 AI 技术发展的角度，通过技术的积累实现了工具的「进化」，成就了一款现象级产品。
++ “政治正确”：不管对于公司还是政府，「落后就得挨打」，必须推，也不得不推，自上而下的推。
 
 ### 1.5 OpenClaw 对程序员的影响是什么？
-作为程序员，更合适的态度不是恐慌，而是持续学习。
+作为程序员，我持有的态度是**「不要恐慌」和「持续学习」**。
 
-- **不要恐慌**：AI 对程序员的冲击不是突然发生的，未来也只会更多。没必要每次技术更新都紧张一次。
-- **持续学习**：OpenClaw 已经证明自己是一款成功产品，还是开源的，更值得去学习它、理解它、吸收它。
++ 不要恐慌：AI 对于程序员的冲击也不是一天两天了，也可预期的，未来只会有更多的冲击。没来一次技术更新都恐慌一次，实在是太累了，还不如静下心来，好好去了解学习背后的技术，不断的成长。
++ 持续学习：OpenClaw 的 Star 数量已经冲上了 github 第一，超越了 Linux 和 Redis，毫无疑问这是一款成功的应用。更何况还是开源的技术，那为什么不去学习它，将它转化为自己的知识，才能更好的应用它，并用在工作其他地方。
 
 ## 二、OpenClaw 实际应用分析
+下面会通过一些具体的案例分析，让大家了解
 
-下面通过一些具体案例，理解它的生成原理、驱动方式和本质。
++ OpenClaw 的生成原理
++ OpenClaw 的驱动方式 -> ReAct + Tool
++ OpenClaw 的本质 -> 是一个全副武装的 Agent，能够与本地环境交互、支持 Skills 等。
 
-<Callout type="info" title="结论先行">
-OpenClaw 的本质，是一个能与本地环境交互、支持 Skills、能够持续执行的 Agent。
-</Callout>
+:::note
+以下案例基于 LLM 的 messages 进行分析。由于 OpenClaw 没有 messages 日志，我改造了源码，并设计了一个可视化预览日志的工具。具体见附录B。
+
+:::
 
 ### 2.1 hi，帮我做一个「AI 智能菜谱应用」
-#### 背景
-我很喜欢做饭，尤其喜欢学习 B 站上各位大厨的方法。但每次看完视频就忘了，所以想把“视频菜谱”变成“文本菜谱”，下次复刻时只要看一眼就知道怎么做。
+| 背景 | 我很喜欢做饭，尤其喜欢学习 B 站上各位大厨的做饭方法。但是每次看完视频就忘记了怎么做，我想「视频菜谱」变成「文本菜谱」，这样每次想复刻的时候，简单看一眼就知道该怎么做了。 |
+| --- | --- |
+| 输入 | B 站视频链接，例如：[https://www.bilibili.com/video/BV15QPCzGEMy](https://www.bilibili.com/video/BV15QPCzGEMy/?spm_id_from=333.1387.favlist.content.click)<br/><!-- 这是一张图片，ocr 内容为：特厨隔坡雪发州患 金包银OR锅气蛋炒饭?一个视频教你们成为蛋炒饭大王! 没错这真的是我关禽没有对话但应该有要求希问题, 未经作右提现,禁止转死 金龙排行接着直接复5名)1915万 目加2195-095-15-0933 已关注299.0万 弹幕列表 蛋炒饭 接下来插故 自或连明 附卡一做 饭! 国特色能量 日167.2万日1968 0120 防卡一做腊排骨!特厨做 县排 口126  0865 金包银版 隔卡一做三分钟速成!酷和 蛋下掉你所有的饭!酷妙蛋 四种房微景 隔卡一做[米饭:你不要过来 蛋炒饭 啊!烧像猪肝! 国抚新做饭 回70.6万 9 6 6 6 6  6万 国 6 6 6 6万 四 70 0L12 这不是烤肉,这是封神配方! 因  纵爱美食 特厨最爱的菜?今天原版来啦 三下锅 狂野版 国抚新精坡 回204.8万 时 3847 阴卡一做[两这个视频的时候 又吃了两确饭!一刹想炒鸡蛋 四铁厨健饭 发个友善的迎葬见证当下 50入正在看,口装填 1759 亲弹盘 发送 四82.8万 0 71 D2:04 -->
+![](https://cdn.nlark.com/yuque/0/2026/png/43125484/1773303001684-627a3fe7-2915-43e3-867f-1a8128c1fa7f.png) |
+| 输出 | 详细的菜谱，最好要图文并茂，随时能够查看 |
+| 成果 | 菜谱网站：[https://xdcat.github.io/xishi-recipes/](https://xdcat.github.io/xishi-recipes/)<br/>源代码：[https://github.com/XDcat/xishi-recipes](https://github.com/XDcat/xishi-recipes)<br/>首页截图：<br/><!-- 这是一张图片，ocr 内容为：喜食AI 首页 使用方法 所有菜谱 喜食AI 把视频变成菜谱 粘一个B站做饭视频链接,AI帮你生成图文并茂的专 业菜谱. 使用方法 查看所有菜谱 AI生成菜谱 图文并茂 永久收藏 一键提取 自动截取关键步骤截图,每个步骤配 CLAUDE AI 深度理解烹饪内容,生成 菜谱保存为MARKDOWN,发布到静 输入B站视频链接,自动下载音频, 态网站,随时查阅,再也不用找视频 对应的操作画面. 食材清单,步骤说明,技巧小贴士. 提取字幕,无需手动操作. 了 -->
+![](https://cdn.nlark.com/yuque/0/2026/png/43125484/1773303186601-09dd6834-fe8f-44b6-8587-1054520e6ba9.png)<br/>菜谱截图：<br/><!-- 这是一张图片，ocr 内容为：喜食AI 首页 所有菜谱 使用方法 所有菜谱 [版本二]狂野猪油渣蛋炒饭 金包银蛋炒饭 ON THIS PAGE 1.炼猪油,出油渣 丰食材 步骤 锅中放入切小块的猪肥肉,小火慢慢煽炒,通出猪油.将油渣炸至焦黄酥脆(颜色呈金黄微焦), [版本一]金包银蛋炒饭 捞出备用,锅中留下炼好的猪油. [版本二]狂野猪油渣蛋炒饭 油渣一定要炸到焦黄,这样口感才酥脆,香味才足.出锅前撒少许盐给油渣一点底味. 烹饪技巧 小贴士 大火 这样呢特别香 -->
+![](https://cdn.nlark.com/yuque/0/2026/png/43125484/1773303306797-c2fcb566-7767-4e63-a4be-4be2814b08ca.png) |
 
-#### 输入
-B 站视频链接，例如：[https://www.bilibili.com/video/BV15QPCzGEMy/](https://www.bilibili.com/video/BV15QPCzGEMy/)
 
-#### 输出
-详细的菜谱，最好图文并茂，随时可以查看。
+以下为具体的流程分析
 
-#### 成果
-- 菜谱网站：https://xdcat.github.io/xishi-recipes/
-- 源代码：https://github.com/XDcat/xishi-recipes
+#### 2.1.1 /new 新建会话，开始准备环境
+准备环境：包括 System Prompt，和引导 AI 向用户打招呼。
 
-### 2.1.1 新建会话，开始准备环境
-准备环境包括：System Prompt，以及引导 AI 向用户打招呼。
+:::note
+这里的 User Message 很关键，除了引导和用户打招呼外，<font style="color:#DF2A3F;">更重要的是触发一系列的 tool 准备环境。</font>
 
-这里的 User Message 很关键：除了打招呼，更重要的是触发一系列 tool 准备环境。
+:::
 
-- 读取长期记忆 Memory
-- 读取用户信息
-- 建立对话上下文
+<!-- 这是一张图片，ocr 内容为：13:12:31.414 2条消息 #1 +2新增 新增 SYSTEM YOU ARE A PERSONAL ASSISTANT RUNNING INSIDE OPENCLAW. ## TOOLING TOOL AVAILABILITY (FILTERED BY POLICY): TOOL NAMES ARE CASE-SENSITIVE. CALL TOOLS EXACTLY AS LISTED. READ:READ FILE CONTENTS OVERWRITE FILES CREATE WRITE: OR EDITS TO FILES EDIT:MAKE PRECISE ILABLE FOR TTY-REQUIRED CLIS) (PTY AVAILA SHELL COMMANDS RUN EXEC: BACKGROUND EXEC MANAGE SESSIONS PROCESS: SEARCH THE WEB (BRAVE API) WEB_SEARCH: EXTRACT READABLE CONTENT FROM A URL WEB FETCH:FETCH AND EX WEB BROWSER CONTROL BROWSER: CANVAS:PRESENT/EVAL/SNAPSHOT THE CANVAS NODES: LIST/DESCRIBE/NOTIFY/CAMERA/SCREEN ON PAIRED 展开全部(30,145字符) USER 新增 UP SEQUENCE NOW - READ THE A NEW SESSION WAS STARTED VIA /NEW OR W OR /RESET.EXECUTE YOUR SESS SESSION STARTUP REGUIRED FILES BEFORE RESPONDING TO THE USER.THEN GREET THE USER IN YG YOUR CONFIGURED P D PERSONA,IF ONE IS PROVIDED.BE EEP IT SENTENCES AND ASK WHAT THEY WANT TO DO. 1-3 YOURSELF - USE YOUR DEFINED VOICE, MANNERISMS, AND MOOD. KEEP LE TO EL DIFFERS FROM DEFAULT MODEL IN THE SYSTEM P IF THE RUNTIME MODEL DI M PROMPT, MENTION THE DEFAULT MODEL. DO NOT MENTION INTERNAL STEPS, FILES, TOOLS, OR REASONING. CURRENT TIME: WEDNESDAY, MARCH 11TH, 2026 -13:12 (ASIA/SHANGHAI) / 2026-03-11 05:12 UTC -->
+![](https://cdn.nlark.com/yuque/0/2026/png/43125484/1773303598582-a3ed8862-89b3-419d-934e-1b6b4df44f69.png)
 
-### 2.1.2 下达指令，开始干活
-用户告诉它要做一个智能菜谱项目，输入是 B 站视频链接，目标是把视频内容整理成专业菜谱。
+准备环境：根据 System Prompt 的引导，通过 Tool 读取长期记忆 Memory。这里没有读到数据。
 
-### 2.1.3 生成过程中的细节
-开始了解任务背景：
+<!-- 这是一张图片，ocr 内容为：新增 2 TOOL CALLS ASSISTANT TOOL CALLS X 2 MEMORY_SEARCH TOOLUBDRK01RFFKS8ECUNEWAMMXAXKVB7 READ TOOLUBDRK018C7ZRRACK6UZBPLUWWTQZZ TOOLUBDRK01RFFKS8ECUNEWAMMXAXKVB7 TOOL 新增 CALL 子 "RESULTS":[], "PROVIDER":"NONE", "CITATIONS": "AUTO", "MODE": "FTS-ONLY" 子 TOOLUBDRK018C7ZRRACK6UZBPLUWWTQZZ TOOL 新增 CALL 子 "STATUS":"ERROR", "TOOL":"READ", '/USERS/XDCAT/.OPENCLAW/WORKSPACE/MEMORY/2026-03-11.MD'" "ERROR":"ENOENT: NO SUCH FILE OR DIRECTORY, ACCESS 子 -->
+![](https://cdn.nlark.com/yuque/0/2026/png/43125484/1773303837623-9dcfd820-1c52-4778-b8eb-6842d199bc5d.png)
 
-- 读取项目文件
-- 查看依赖和实现方式
-- 了解视频内容
-- 规划处理流程
+准备环境：读取用户信息
 
-了解完项目后，开始写规划文档，然后直接开干：检查环境、准备依赖、分析项目结构。
+<!-- 这是一张图片，ocr 内容为：新增 ASSISTANT 1 TOOL CALL TOOL CALLS X 1 READ  TOOLUBDRK01TVLGQXMUCPULPXAGZBPNXF TOOLUBDRK01TVLGQXMUCPULPXAQZBPNXF 新增 TOOL CALL # 2026-03-10 ##初次见面 用户:小呆,程序员 给自己取名"喜喜",定位为风趣幽默,高效简洁的私人助理 主要使用中文交流 -->
+![](https://cdn.nlark.com/yuque/0/2026/png/43125484/1773303998156-f13af007-ab68-4a9b-b06d-79061a728dda.png)
 
-### 2.1.4 进行了 89 轮会话后完成任务
-其中用户对话可能只有 10 次左右，大多数由 Tool 驱动，实现了持续工作的效果。
+#### 2.1.2 下达指令，开始干活
+下达指令：
 
-### 2.2 hi，我想试试 Skills，帮我给 Apple 的提醒事项新增一个提醒
+<!-- 这是一张图片，ocr 内容为：USER SENDER (UNTRUSTED METADATA): JSON "LABEL":"OPENCLAW-CONTROL-UI", "ID":"OPENCLAW-CONTROL-UI" [MED 2026-93-11 16335 GHT+8] 我很高效修装,我想做一个装理的 SKILLS GENT.输入口站的视频,之前接统一个取消,之前接缝纫了的减道,之前接缝,之前接缝,之前接缝,之前 一个项目.但是发有元度,具体见目裂/USERS/XDCAT/XISHT-FECIPES,饭元把规的连锁的连锁的面积 始这个项目. 视频聚例:HTTPS://MMM.DILIBILI.COM/VIDEO/BVISOPCZGENV/3SPM.ID FROM三3333333333.FAVLIST.CONTENTENT.CLICK -->
+![](https://cdn.nlark.com/yuque/0/2026/png/43125484/1773304544364-524d49d5-3edc-416e-8d47-0f362c1801d2.png)
+
+#### 2.1.3 生成过程中的细节
+开始了解任务背景
+
+<!-- 这是一张图片，ocr 内容为：新增 ASSISTANT 2 TOOL CALLS 先看看之前的项目进展和这个视频,做到心中有数. TOOL CALLS 2 EXEC TOOLUBDRK01YFOVZSAJJPSQTPWYOPUFAP ID WEB_FETCH TOOLUBDRK01QKRRUTWAUW6SAR1KK4UWZK 新增 TOOL TOOLUBDRK01YFOVZSAJJPSQTPWYOPUFAP CALL /USERS/XDCAT/XISHI-RECIPES/REQUIREMENTS.TXT /USERS/XDCAT/XISHI-RECIPES/NODE-MODULES/EDOCSEARCH/CSS/DIST/-VARIABLES.CSS /USERS/XDCAT/XISHI-RECIPES/NODE-MODULES/EDOCSEARCH/CSS/DIST/STYLE.SCSS /USERS/XDCAT/XISHI-RECIPES/NODE-MODULES/EDOCSEARCH/CSS/DIST/STYLE.CSS /USERS/XDCAT/XISHI-RECIPES/NODE-MODULES/ODOCSEARCH/CSS/DIST/MODAL.CSS /USERS/XDCAT/XISHI-RECIPES/NODE-MODULES/EDOCSEARCH/CSS/DIST/BUTTON.CSS /USERS/XDCAT/XISHI-RECIPES/NODE-MODULES/ODOCSEARCH/CSS/README.MD /USERS/XDCAT/XISHI-RECIPES/NODE-MODULES/EDOCSEARCH/CSS/PACKAGE.JSON /USERS/XDCAT/XISHI-RECIPES/NODE-MODULES/EDOCSEARCH/IS/DIST/ESM/IND (4,473字符) 展开全部 TOOLUBDRK01QKRRUTWAUW6SAR1KK4UWZK TOOL 新增 CALL "URL";"HTTOS://MNN.BJLIBILI.COM/VIDEO/BVI5OPCZGEHY/7SOM-ID_ID_FROME3333,1387,FAVLI5T-CONTENT-CLICK" "FINALURL":"HTEPS://MMM.BJLIBILL,COM/VIDEO/BV15OPCZGERY/3SPM-1D-FROME3333.1387.FAVLIST.CONT.CLICK" "STATUS"; 200, "CONTENTTYPE": "TEXT/HTML", BE\">>\NSOURCE:WEB FETCH\N---\N金包银OR锅气蛋炒 "TITLE":"\N<<<EXTERNAL_UNTRUSTED_CONTENTENT ID-\"05765383D389BE\"> 孩?一个视频教你们就为蜜炒领大王!_阵理降哩-BJLING<EXTENTEND,EXTEND,EXTENTENTENTED-CONTED-CONTENT ID::"A5765383D383D389BE" "EXTRACTMODE":"MARKDOWN". -->
+![](https://cdn.nlark.com/yuque/0/2026/png/43125484/1773304572973-e4c7e078-af4c-4a5b-bfcb-1d43054d873f.png)
+
+使用 Tool 阅读项目文件。调用 Read N次去了解项目。
+
+<!-- 这是一张图片，ocr 内容为：3 TOOL CALLS ASSISTANT  TOOL CALLS 3 READ TOOLUBDRK015WEUJC6NANYGZZCBQEF8YZ 1D "PATH":"/USERS/XDCAT/XISHI-RECIPES/RECIPE.PY" 子 READ TOOLUBDRK013UB3WXELT1XA9KPRJSH3AN ID "PATH":"/USERS/XDCAT/XISHI-RECIPES/REQUIREMENTS.TXT" 子 EXEC TOOLUBDRK01PSVR51CIZ58DTRANOWQDCU ID "COMMAND'3,"1S /USERS/KAT/&ISHL-RECIPES/SCRIPES/ 88HO \"- & ECHO "--------- /USERS/XDCAT/XISHL-RECISHL-RECIPES/OUT/ 66 ECHO: -->
+![](https://cdn.nlark.com/yuque/0/2026/png/43125484/1773304756226-52cfc099-7b34-4b12-996e-4b99baccd7e9.png)
+
+了解完项目，开始规划，并将规划内容通过工具 write 写入项目中
+
+<!-- 这是一张图片，ocr 内容为：ASSISTANT 1 TOOL CALL 代码摸透了,现在写规划文档. TOOL CALLS X 1 WRITE ID TOOLUBDRK017HJWHS7QPORD1DKSDLHCQT 子 "PATH": "/USERS/XDCAT/XISHI-RECIPES/PLAN.MD", 喜食AI -项目规划\N\N## 现状评估\N\N### 已完成\N- 完整的 5 步 PIPELINE 骨架:'EXTRACT - TRANSCRIBE CONTENT': .'TRANSCRIBE.PY':优先用 RATE - PUBLISH'\N- 'EXTRACT.PY': YT-DLP 下 6下载音频/视频+B站字幕尝试,保存META.JSON\N-'T FRAMES +GENERATE B站字幕,无则WHI WHISPER MEDIUM 转录\N-'FRAMES.PY':按 SEGMENT 时间戳或均匀截帧(最多 12 帧) GENERATE.PY`:CLAUDE API 生成 最多12帧)\N-'GEN 结构化 MARKDOWN 菜谱\N-'PUBLISH.PY':复制到 VITEPRESS DOCS,更新侧边栏&菜谱列表\N-'RE -'RECIPE.PY':主入口 CLI,把5步串起来 已知问题/未完成\N|问题问题优先 IN-VITEPRESS 站点基础搭建+GITHUB ACTIONS 准备(PACKAGE.JSON 里有 BUILD 脚本)\N\N######## 级 | 说明 |\N|---------------------|N| 未做任何错误测试 高整 整个 PIPELINE 从未真正跑通过,未知问题多 |\N|WHISPER 依赖 中|均匀截帧不够智能,常截到无意义帧 |\N 中| TORCH+WHISPER安装慢,首次体验差|\N|截帧质量靠运气 重| 运气| 帧|\N|图片路径硬编码 中菜谱MD里帧路径是固定的 |\N| PUBLISH.PY 侧边栏更新脆弱 中依依赖字符串替换,多 固定的FRAME_01~12,与实际截帧结果可能不符 次执行容易出问题 |\N| 无 GITHUB ACTIONS NS配置 4里但没有 .YML |\N| 无 OPENAI WHISPER API 备 中|自动部署逻辑写在 RECIPE.PY 里但 低|目前纯 CLII\N' 选 | 低 | 本地 WHISPER 失败时没有回退 | CLI \N\N---\N\N#目标\N\N**核心目标:把 B站视频 URL 退|\N|无WEB EB UI ,高质量图文菜谱的流程跑通,并部署到 GITHUB P UB PAGES.水米\\N---\N/N/N##阶段规划\N\N\N\N## PHASE 1:跑通PIPELINE(当前优先)\N1.水水 真来测试验:用来例视频:BV150PCIGBLY]完整是一组/N2,林修复发现的BU9积13.验证生成的真治质量(N]N]N]N]N]N 依赖(Y-DLP/FFMPEG/WHISPER/ ANTHROPIC)\N-[]通行 EXTRACTIPY 测过下鼓和字药理政)\N-[]通过转系 1N-[]运行 FRANES,PY 测试桥)N-[]通行 GENERATE.PY 和试[[] []传真桥通视:  []修直邮政:  [] []传真桥通视输通视: 阿莱动态部入两片IN-(] 适行 PUBLISHOPY 羽过发布INNG  HASO Z:原理提升(NASO 7 MARKDOWN),再渲染,更可靠\N -加入 FEW-SHOT 示例,提升莱谱质量\N 支持视频描述区的食材清单辅助提取\N3,**帧与步骤对齐**:每个 ### PHASE 3:部署& 体验\N\N1.**GITHUB ACTIONS**; 京任步骤精准对应截图\N4.**更好的错误处理水*:网络失败重试,API失败降级\八八N##### PUSH 后自动'VITEPRESS BUILD'+部器到 GITHUB PAGES\N2,**VITEPRESS 主题优化*:首页莱谱卡片式展示 示(缩略图+标题+标签)\N3. **(可选)WEB 表单*:输入 URL 直接触发 PIPELINE\N\N## PHASE 4:扩展 **菜谱 FRONTMATTER 完善**:让 VITEPRESS 能搜索/过滤\N4.**(可 技术架构 (远翔)(N\N-支持更多来源(YOUTUBE,抖音,小红书)(N-批量导入(一次处理收藏夹)(N-莱谱评分&菜谱评分&/N 反馈\N\N--- #U B站字幕ORWHISPER \N输入:B站视频URL\N \N[EXTRACT] YT-DLP - 音频/视频/字幕- META.JSON\N   IN[TRANSCRIBEL \N\N, \NLGENERATE] CLAUDE \N[FRAMES] FFMPEG 按时间截截顿-FRAMES/FRAME XX.JPG\N TRANSCRIPT.TXT SEGMENTS JSON\N API(转录+视频描述) {N[PUBLISH] 复制到 VITEPRESS DOCS - 更新侧边栏- GIT PUSH - GITHUB. RECIPE.MD\N E1第一步:用'BV15QPCZGEMY'跑通全流程,边跑边修**\N" PAGES\N'`\N\N---\N\N#当前最高优先级\N\N\N **PHASE 1 子 TOOLUBDRK017HJWHS7QPORD1DKSDLHCQT TOOL CALL [COMPACTED:TOOL OUTPUTPUT REMOVED TO FREE CONTEXT] -->
+![](https://cdn.nlark.com/yuque/0/2026/png/43125484/1773304876407-c01c1099-75f4-4810-8d33-17d9f2e31e9f.png)
+
+开始与本地环境交互写代码。通过 exec 执行指令，通过 write 编辑代码。
+
+<!-- 这是一张图片，ocr 内容为：ASSISTANT 1 TOOL CALL 文档写好了.现在直接开干-先检查环境,然后用案例视频跑一遍PHASE 1: TOOL CALLS X 1 EXEC ID TOOLUBDRK011FD31XHOSGGVJI4TFZDNFH "CD /USERS/XDCAT/XISHI-RECIPES && WHICH YT-DLP && YT-DLP - YT-DLP --VERSION && WHICH FFMPEG & FFMPEG -VERSION : SG ECHO \"----" SG PYTHON3 -C \"IMPORT ANTHROPIC; PRINT("ANTHROPIC OK"\" 66 PYTHON3 -C\"IMPOR HEAD - 2>&1 1 & ECHO \""---- HO \"ANTHROPIC_API_KEY-${ANTHROPIC_API_KEY:0:10}...\""""""" WHISPER; PRINT('WHISPER OK')\" && ECHO \"--\" G& ECHO V TOOL TOOLUBDRK011FD31XHOSGGVJI4TFZDNFH CALL TO FREE CONTEXT] [COMPACTED:TOOL OUTPUT REMOVED ASSISTANT 1TOOL CALL TOOL CALLS X 1 EXEC TOOLUVRTX01STDB5RPJMQFEOERJBHHNBW ID "COMMAND";"CD /USERS/XDCAT/XISHI-RECIPES 88 PIPS PIPS INSTALL ANTHROPIC OPENAI-WHISPER 7261 / TAIL-5" "TIMEOUT": 120 子 TOOL TOOLUVRTX01STDB5RPJMQFEOERJBHHNBW CALL [COMPACTED: TOOL OUTPUT REMOVED TO FREE CONTEXT] -->
+![](https://cdn.nlark.com/yuque/0/2026/png/43125484/1773304940848-982e3de2-8e37-4688-9e2d-08259df43d6b.png)
+
+需要用户交互会等待用户回复
+
+<!-- 这是一张图片，ocr 内容为：ASSISTANT 情况清差了:你的 OPENCLAW 走的是快手内部的'WANGING-APL,没有直视的'ANTHROPICAPICAPI.KEY' 里用的是领准 ANTHROPIC SDK,需要调整. 两个选择: 现在用的那个,不需要额外 **方案 A(推荐);**把'GENERATE.PY'改成用 OPENAI 兼容接口调用你的'WANGING-API',就是 OPENCLAW KEY. **方案 B:**你提供一个'ANTHROPICLAPI-KEY'(比如官方的),写到',ENV'文件里. 我倾向方案A,复用已有配置最省事.改起来也不复杂一把'ANTHROPIC.ANTHROPIC()"换成'OPENAI.OPENAI.OPENAI......... API_KEY.)就行. 你觉得哪个方向?或者你本来就有官方 ANTHROPIC KEY? -->
+![](https://cdn.nlark.com/yuque/0/2026/png/43125484/1773305049537-3e217ec9-4668-4dc1-98f1-179e30002c65.png)<!-- 这是一张图片，ocr 内容为：USER SYSTEN; (2926-03-11 16:39:26 OFT4B) EXEC CONPLETED (QUIET-GU, CODE 0); 我以前上学的时候都华过,蛋沙字证,蛋沙区,蛋有效:来领,酒不 而也都可以.只要已源教可以.太空,遭沙地北国,下一个,冯里,科本也数过要改造得有事,为什么数你们两个版本层?欧坦通过今天的一条规规,把面 饭的香辣细节进到红,把米西准备行,鸡蛋黄蛋糕酒店.把鸡蛋加进去之后,你看一引了已被敢了.来驾要来,它刚在冰稻里茶出来的是完全本行的.太源.太 米粒熟了之后一冻,那么在加热的时... SYSTEN:  12928-33-11 16;39:56 8FT+O) EXEC CONPLEFED (NOVA-ORE, CODE 9):;: /USERS/XDENELAW/-ENV ZSN;3 MATCHES FOUND://USERS/XDCAT/.CONFIG/ANTHROPIC* SENDER (UNTRUSTED METADATA): JSON 子 "LABEL":"OPENCLAW-CONTROL-UI", "ID':"OPENCLAW-CONTROL-UI" L [WED 2026-03-11 17:07 GMT+8] 使用以下 PROVIDER,使用 OPENAI 标准. "MODELS':{ "MODE":"MERQE'", 'PROVIDERS": 'WANQWANQIWANQINWANQING'': Y 子 子, 收起 -->
+![](https://cdn.nlark.com/yuque/0/2026/png/43125484/1773305081475-ce867377-033b-4918-9f46-c0fe53af0ed0.png)
+
+回复完继续改造
+
+<!-- 这是一张图片，ocr 内容为：A SSISTANT 1 TOOL CALL 明白了,用内部的WANQING API走( TOOL CALLS X 1 READ TOOLUBDRK01XKXBRLMMC7OULHZHJADVRL ID TOOLUBDRK01XKXBRLMMC7OULHZHJADVRL TOOL CALL [COMPACTED:TOOL OUTPUT REMOVED TO FREE CONTEXT] ASSISTANT 1TOOL CALL TOOL CALLS X 1 EDIT TOOLUBDRK01WWFVYPSAA9ZVXW8PIHYBTR ID TOOL TOOLUBDRK01WWFVYPSAA9ZVXW8PIHYBTR CALL [COMPACTED: TOOL OUTPUT REMOVED TO FREE CONTEXT] ASSISTANT 1 TOOL CALL TOOL CALLS X 1 EDIT  TOOLUBDRK01EWDCRXKUP3ZW4E4A8FIREF -->
+![](https://cdn.nlark.com/yuque/0/2026/png/43125484/1773305100131-a09a6a0a-399d-479b-8478-a05f4577610f.png)
+
+#### 2.1.4 进行了 89 轮会话后完成了任务
+:::note
+其中用户对话可能在 10 次左右，大多数由 Tool 驱动，实现了持续工作的效果。
+
+:::
+
+<!-- 这是一张图片，ocr 内容为：#79 113条消息 +1新增 17:59:35.106 +6新增 114条消息 #80 17:59:45.155 #81 +2新增 18:00:01.997 116条消息 18:00:05.804 118条消息 +1新增 #82 #83 18:00:11.342 120条消息 +1新增 +1新增 #84 18:00:18.220 122条消息 +1新增 #85 18:00:31.455 124条消息 +1新增 #86 18:01:00,799 126条消息 18:01:05,376 128条消息 +1新增 #87 +1新增 #88 18:01:09.976 130条消息 +1新增 18:01:17.155 132条消息 #89 -->
+![](https://cdn.nlark.com/yuque/0/2026/png/43125484/1773305830870-6febaad9-d620-4f99-ae57-b0664b77fa04.png)
+
+### 2.2 hi，我想试试 Skills，帮我给 Apple 的提醒事项，新增一个提醒
 #### 2.2.1 你会什么 Skills
-Skills 的定义在 System Prompt 里已经写好了，AI 可以直接给出可用能力清单。
+Skills 的定义在 System Prompt 已经定义好了，问 AI 时，就能够直接给出结果。
+
+<!-- 这是一张图片，ocr 内容为：你会什么SKILLS OPENCLAW-CONTROL-UI  10:57 我目前内置了这些SKILLS,各有专长: 信息获取 WEATHER一天气/预报(WTTR.IN/OPEN-METEO) WEB_SEARCH/WEB_FETCH一搜索+抓网页内容 SUMMARIZE一总结URL,播客,本地文件内容 任务管理 APPLE-REMINDERS - 管理 APPLE 提醒事项 口 THINGS-MAC一管理 THINGS 3 任务 开发&GITHUB CODING-AGENT一派 CODEX/CLAUDE CODE去干编码活 GITHUB-GH CLI:PR,ISSUE,CI GH-ISSUES一自动处理GITHUB ISSUES,开PR 内容&媒体 爱OPENAI-WHISPER一本地语音转文字 普 VIDEO-FRAMES -用 FFMPEG 截帧/剪片 GEMINI-GEMINI CLI问答生成 社交 XURL-发推/搜推/管理X账号 -->
+![](https://cdn.nlark.com/yuque/0/2026/png/43125484/1773306123080-8d229ec9-5433-46a0-ba0e-5a57193c5728.png)
 
 #### 2.2.2 帮我创建 Apple 的提醒事项
-对话与效果显示，AI 先理解需求，再调用对应 Skills 完成提醒事项创建。
+对话与效果
 
-#### 2.2.3 具体流程
-- 发现 Skills
-- 读取 Skills 详情
-- 执行 Skills
+<!-- 这是一张图片，ocr 内容为：帮我塔加境上九点到十点的提能事项:在组内进行心宠虾OPENCLEW技术分享 搜索 今天 APENCLAW.CANTRAL-UI 10.57 上午 计划 今天 下午 R WITH RONDCTT ADO --TITTE-在扫内进行  O9ERCIBERCIBE 括共发军"一6E"2826-83-12 21:83-12 21:83-12 21:89ERCI 在组内进行小龙牙 OPENCLAW 技术公享 全部 脂标 完成 在组内进行小龙虾 00ENCKAW技术分享[是理事项一2026年3月12日21:00 我的列表 八洲A 口你好 在程序进行刊定行 OARERCLAE   [决置事项]一29.292612月   上:88 消答清单 接主,今晚21:00的选群已江好:在组内进行小龙虾OPENCLAW技术分享, 小龙虾+技术分率,这组合相当妙 喜喜 10:69 酒加列表 -->
+![](https://cdn.nlark.com/yuque/0/2026/png/43125484/1773285224398-61d812c2-8e39-4362-9a2e-4102554267be.png)
+
+具体流程：发现 skills - 读取 skills 详情 - 执行 skills
+
+<!-- 这是一张图片，ocr 内容为：按照SKILLS执行相关指命 读取SKILLS详情 SKILLS的索引 SYSTEM PROMPT 已经包含了 "FRTARERLM-PRETML-_F TH  ANDLLLY 216 OF-L THEDLAO. 518594 03-3509F PER'VAN 2036-05708835 0-10 57 33 68 103 LATE N .S N . BUT .N . LK (DREDE 4451277 12729 833 18 28 4129 4129 129 127 -->
+![](https://cdn.nlark.com/yuque/0/2026/png/43125484/1773285252826-5045be11-54ed-4a37-adbd-b56abeea9149.png)
 
 ## 三、关键技术点
-
 ### 3.1 基本框架：Channel + Gateway + Env
-OpenClaw 的关键点在于两件事：
+具体如下图所示。关键点在于：1）提供完善的本地交互环境；2）通过 Gateway 接入不同的 App 进行 Chat。
 
-1. 提供完善的本地交互环境
-2. 通过 Gateway 接入不同的 App 进行 Chat
+<!-- 这是一张图片，ocr 内容为：INBOUND LAYER TELEGRAM DISCORD WHATSAPP WEBCHAT SLACK CHANNEL层:不同的CHAT方式 CONTROL UI CHANNELS.TELEGRAM CHANNELS.WHATSAPP CHANNELS.SLACK CHANNELS.DISCORD CONTROL PJANE GATEWAY GATEWAY.PORT:18789 WEBSOCKET+HTTP GATEWAY层:会话管理与路由 SESSION MANAGER SESSION.DMSCOPE SESSIONKEYRESOLVER ROUTING ENGINE BINDINGS RESOLVEAGENTROUTE EXECUTION LAYER AGENT:WORK AGENT:MAIN AGENTS.LIST[1] AGENTS.LIST[O] 执行层:本机环境+AGENT执行 WORKSPACE WORKSPACE MEMORY BACKEND TOOL SYSTEM TOOLS.PROFILE MEMORY.BACKEND QMD OR BUILTIN EXEC, READ,WRITE EXTERNAL SERVICES MODEL PROVIDERS DOCKER  SANDBOX 拓展层:大模型提供商+沙箱环境 MODELS.PROVIDERS AGENTS.DEFAULTS.SANDBOX AUTH.PROFILES -->
+![](https://cdn.nlark.com/yuque/0/2026/png/43125484/1773307387003-b049ce59-ac2e-415c-9e6b-fc4300809494.png)
 
-可以理解成以下四层：
-
-- **Channel 层**：不同的聊天方式
-- **Gateway 层**：会话管理与路由
-- **执行层**：本地环境 + Agent 执行
-- **拓展层**：大模型提供商 + 沙箱环境
+<!-- 这是一张图片，ocr 内容为：OPENCLAW架构 (智能体运行时) UI AGENT RUNTIME (客户端) AGENT LOOP CLI WEB UI 智能体循环 LLM 控制面板 命令行工具 (大模型) 消息/回复 消息/回复 MEMORY SKILL TOOL 工具 技能 记忆 GATEWAY (网关) ADAPTER LANE (本地设备) DEVICE 车道 适配器 BROWSER SHELL FILE 文件系统 浏览器 命令行 消息/回复 指令 动作/结果 本地环境 CHANNEL(渠道端) NODE(设备端) (远程设备) DEVICE FEISHU DING TALK TELEGRAM LOCATION ANDRIOD MAC SCREEN CAMERA IOS 飞书 电报 钉钉 屏幕 小位置货 相机 NODE NODE NODE 小红书号:SHASENGAI -->
+![](https://cdn.nlark.com/yuque/0/2026/png/43125484/1773315140499-7cda1369-35b6-40c2-bf05-6eca246d1ea7.png)
 
 ### 3.2 智能体循环 Agent Loop：ReAct 自我驱动的 Agent
-官方把 Agent 执行的循环叫做 Agent Loop，但我更愿意把它理解成 ReAct 范式。
+> 官方把 Agent 执行的循环叫做 Agent Loop，但我更喜欢称之为 ReAct 范式的 Agent。
+>
 
-#### ReAct 模式的 Agent
-核心点是实现了“规划—执行—反思”的循环。驱动类型有两种：
+**(1) ReAct 模式的 Agent**
 
-- 等待用户对话后继续
-- 执行 Tool 后自动继续
+核心点在于实现了「ReAct 模式的 Agent」，实现了AI “规划-执行-反思”的循环。循环驱动类型有两种：
 
-对于复杂任务，大量循环是由 Tool 自动驱动的，不需要用户频繁介入。
++ 等待用户对话后继续；
++ 执行 Tool 后自动继续。对于复杂任务，Tool 驱动的循环会更多，实现了类似持续工作的效果。
 
-#### 底层具体实现：Pi Agent
-Pi Agent 的定位与 Claude Code 类似，是一款增强版 AI 编码工具。它的核心思想是尽可能简单，主要依赖 read/write/edit/bash 四个 tool，追求可预测性。
+**其中，大量的循环是由 Tool 驱动自动完成，不需要用户介入，例如第 2.1.4 节。**
 
-| 对比维度 | Claude Code | Codex | Pi |
+那么 ReAct 是如何驱动 Agent 呢？ReAct 类型的 Agent 主要是由 Prompt 驱动的，而不是 Workflow 等工程方法驱动。所以我们来看看他的提示词吧！具体见[「分析」System Prompt](https://www.yuque.com/xiaodai-tehze/lah8hg/bzhocz1ec68i4vg0)，其中的关键点在于：
+
++ 大量 tool 和 skills 的定义
++ ReAct 驱动：“先自己想办法，再开口询问。 先尝试搞清楚。读文件，看上下文，搜索一下。_然后_在卡住时再问。目标是带着答案回来，而不是带着问题。”
+
+**(2) 底层具体实现：Pi Agent**
+
+Pi Agent 的定位与 Claude Code 类似，是一款「增强版 AI 编码工具」。它的思想是尽可能简单，核心只使用了 <font style="color:rgb(25, 27, 31);">read/write/edit/bash 四个 tool，追求「可预测性」Agent。这有一种「大道至简」的感觉，评测效果上也还不错。对比如下：</font>
+
+| **<font style="color:rgb(25, 27, 31);">对比维度</font>** | **<font style="color:rgb(25, 27, 31);">Claude Code</font>** | **<font style="color:rgb(25, 27, 31);">Codex</font>** | **<font style="color:rgb(25, 27, 31);">Pi</font>** |
 | :--- | :--- | :--- | :--- |
-| 系统提示词 | 约 10,000+ tokens | 适中 | < 1,000 tokens |
-| 内置工具数 | 数十个 | 适中 | 4 个 |
-| Plan Mode | 有 | 有 | 无（用文件代替） |
-| MCP 支持 | 有 | 有 | 无（用 CLI 工具代替） |
-| Sub-Agent | 有（不可观测） | — | 无（通过 bash 自我调用） |
+| <font style="color:rgb(25, 27, 31);">系统提示词</font> | <font style="color:rgb(25, 27, 31);">约 10,000+ tokens</font> | <font style="color:rgb(25, 27, 31);">适中</font> | <font style="color:rgb(25, 27, 31);">< 1,000 tokens</font> |
+| <font style="color:rgb(25, 27, 31);">内置工具数</font> | <font style="color:rgb(25, 27, 31);">数十个</font> | <font style="color:rgb(25, 27, 31);">适中</font> | <font style="color:rgb(25, 27, 31);">4 个 (read/write/edit/bash)</font> |
+| <font style="color:rgb(25, 27, 31);">Plan Mode</font> | <font style="color:rgb(25, 27, 31);">有（黑盒子 Agent）</font> | <font style="color:rgb(25, 27, 31);">有</font> | <font style="color:rgb(25, 27, 31);">无（用文件代替）</font> |
+| <font style="color:rgb(25, 27, 31);">MCP 支持</font> | <font style="color:rgb(25, 27, 31);">有</font> | <font style="color:rgb(25, 27, 31);">有</font> | <font style="color:rgb(25, 27, 31);">无（用 CLI 工具代替）</font> |
+| <font style="color:rgb(25, 27, 31);">Sub-Agent</font> | <font style="color:rgb(25, 27, 31);">有（不可观测）</font> | <font style="color:rgb(25, 27, 31);">—</font> | <font style="color:rgb(25, 27, 31);">无（通过 bash 自我调用）</font> |
 
-如果想了解更多，见：[下一代Agent架构——Pi Agent Core 设计逻辑深度解析 - 知乎](https://zhuanlan.zhihu.com/p/2004665077618458930)
 
-### 3.3 自主进化：沉淀长期记忆
-长期记忆以 markdown 的形式存储在 Agent 的 workspace 中，例如 `~/.openclaw/workspace/`。
+<font style="color:rgb(25, 27, 31);">如果想了解更多，见：</font>[下一代Agent架构——Pi Agent Core 设计逻辑深度解析 - 知乎](https://zhuanlan.zhihu.com/p/2004665077618458930)<font style="color:rgb(25, 27, 31);">。</font>
 
-读取长期记忆会自动注入上下文，包括：
+### 3.3 自主进化：沉淀长期记忆，让 AI 越来越来越懂自己和用户
+长期记忆以 markdown 的形式，存储在 Agent 的 workplace 内，例如在目录 ~/.openclaw/workspace/ 下。
 
-- 动态注入到 System Prompt
-- 通过 `read`、`memory_search` 等 tool 注入
+「读取」长期记忆会自动注入到上下文中，包括
 
-更新则包括：
++ 动态注入到 System Prompt 中
++ 通过 read、memory_search 等 tool 注入
 
-- 用户主动说“记住这个”触发
-- 新建会话、定时任务等自动更新
+<!-- 这是一张图片，ocr 内容为：YOU ARE A PERSONAL ASSISTANT RUNNING INSIDE OPCNCLAW. ### # TOOL CALL STYLE 45 委#SEFETY ME DPENCLEW CLI QUICK REFERENCE... 57> > # SKILLS (MANDATORY). 140>EE MEMORY RECAT TH OPCNCLAW SELF-UPDATC 149#MODELALIA 155 : 鲜 WO WORKSPACE IDENTITY AK DOCUMENTALION 158 155 #CURRENT DATE & TINE 17D REPLYTAGS 177>>#MESSAGING 109 # GROUP CHAT CONTEXT 190 `INBOUND CONTEXT LTRUSTED NETADATAL 204 # #PROJECT CONTEXT   # PROXT CONTEXT CONTEXT CONTEXT 案例 THE FOLLOWING PROJECT CONIEXT FITES HAVE BEEN LOADED: 205 286 IF SOUL.ND IS PRESENT,EMBODY ITS PERSONA AND TONE. HI记记 2B7 ## /USERS/XDCAT/.OPENCLAW/WORKSPACE/AGENTS.ND 长期记忆 # SOUL,MD-WHO YOU ARE 58 # TOOLS.MD - LOCAL NOTES # IDENTITY.MD - WHO AN I?. #USERMDABOUTYOUTYOURHUNAN HEARTBEAT.MD 39 I KEEP THIS FILE EMPTY (OR WITH ONLY CONNENTS) TO SKI ) ADD TASKS BELOW WHEN YOU WENT THE AGENT TO CHECK SO -->
+![](https://cdn.nlark.com/yuque/0/2026/png/43125484/1773308262576-3718e9b6-c1f9-4e26-b050-7acd04bbb1a3.png)
+
+「更新」包括
+
++ 主动更新：用户主动说“记住以上内容”触发；
++ 自动更新：新建会话、每天定时任务等。
+
+<!-- 这是一张图片，ocr 内容为：MEMORY.MD-LONG-TERM MEMORY 工作规范 项目开发布成标准(2020-03-121) 2.来请勿引起的后的重项进一流,路上的第一项室是我,不同的节口等 更新MEMORY MEMORY.MD XBAFB-RACIPES (2026-03-12) 商: 商:Q :QW  ON OU N BOO L BOO L DH OO LOO L BOO L BOO LAUE  MEINS FIN LRES , REAS TH TH THING THE  -->
+![](https://cdn.nlark.com/yuque/0/2026/png/43125484/1773284172086-b1393830-5a60-42db-8da6-3e0cdcd0badc.png)
 
 ### 3.4 上下文压缩
-#### 3.4.1 Tool 上下文压缩
-隐藏历史 tool 的结果，但请求参数不会被隐藏。
+#### 3.4.1 Tool 上下文压缩：隐藏历史 tool 的结果，但请求参数没有隐藏
+<!-- 这是一张图片，ocr 内容为：计 新增 2 TOOL CALLS ASSISTANT ASSISTANT 2 TOOL CALLS 先看看之前的项目进展和这个视频,做到心中有数. 先看看之前的项目进展和这个视频.做到心中有效. TOOL CALL5 X 2 TOOL CALLSX2 EXEC TOOLUBDRK01YFOV2SAJJPSQTPWYOPUFAP TOOTUBDRK01YFOVZSAJJPSOTPWYOPUFAP WEB FETCH WEB FETCH TOOLUBDRKO1QKRRUTWAUW6SAR1KK4UWZK TOOL +新增 TOA LUBDRK01YFOVZSAJJPSQTPWYOPUFAP 上下文压缩 /USERS/XDCAT/XISHI-RECIPES/REQUIREMENTS.TXT T REMOVED TO FREE CONTEXT] L OUTPUT [COMPACTED:TOOL /USERS/XDCAT/XISHI-RECIPES/NODE.MODULES/QDOCSEARCH/CSS/DIST/-VARIABLES.CSS /USERS/XDCAT/XISHI-RECIPES/NODE,MODULES/EDOCSEARCH/CSS/DIST/STYLE.SCSS TOALUBDRK01QKRRUTWAUW6SAR1KK4UXZK TOOL CALL /USERS/XDCAT/XISHI-RECIPES/NODE.MODULES/QDOCSEARCH/CSS/DIST/STYLE.CSS /USERS/XDCAT/XISHI-RECIPES/NODE MODULES/@DOCSEARCH/CSS/DIST/MODAL.CSS [COMPACTED:TOOL OUTPUT REMOVED TO FREE CONTEXT] /USERS/XDCAT/XISHI-RECIPES/NADE-MODULES/@DOCSEARCH/CSS/DIST/BUTTON.CSS /USERS/XDCAT/XISHI-RECIPES/NODE-MODULES/EDOCSEARCH/CSS/README.MD ASSISTANT /USERS/XDCAT/XISHI-RECIPES/NODE-MODULES/ADOCSEARCH/CSS/PACKAGE.JSON /USERS/XDCAT/XISHI-RECIPES/NODE-MODULES/ODOCSEARCH/IS/DIST/ESM/IND TOOL CALLSX 3 化 READ TOOTUBDRK015WCUJC6NANYGZZCBQEFBYZ ID V展开全部(4,473字符) +新塘 TOOL - CALL TOOLUBDRKB1QKRRUTWAUV6SAR1KK4UWZK TOOLUBDRK013UB3WXELT1XA9KPRJSH3AN "URL ;"HTEPS://MMMIN,BILL,COM/VIDEA/VIDEA/BVISOPCZGBNY/7SPM-ID,FROM三33333333.FAVLIST.CONTENTENT.CLICK TOALUBDRK@1P5VR51CIZ58DTRANOWQDCU "FINA URT";"HTEPS://WAN,DILL,COM/VIDEO/VIDEO/EVISOPCZGEIY/3SPM,ID.FRON-33333,1367,FAVLAST.CONT.CLICK" "STATUS":200, "CONTENTTYPE":"TEXT/HTML". TOOLUBDRKA15WEUJC6NANYGZZCBQEFBY2 PTITLE";"NSC<EXTERNALLINTRUSTED,CONT ID\"A576538JD38JD3BJBSBE)"SS>>>>>>>>>>>SOURCE; WEB FETCHN-N 6? 一个规筑教练门政为要抄领大王( 韩理海理障理障理,DILIDATED,CONTERD389881 [COMPACTED:TOOL OUTPUT REMOVED TO FREE CONTEXT] EXTRACTMODE":"MARKDOWN". "EXTRACTOR":"READABILITY", TOOL TOOLUBDRK013UB3WXELT1XA9KPRJSH3AN "EXTERNALCONTENT': "UNTRUSTED":TRUE, TOOL OUTPUT REMOVED TO FREE CONTEXT] 'SOURCE :'WEB_FETCH "WRAPPED" TOOL TOOLUBDRK01PSVR51CI25BDTRANOWQDCU [COMPACTED:TOOL OUTPUT REMOVED TO FREE CONTEXT] 展开全部(1817字符) -->
+![](https://cdn.nlark.com/yuque/0/2026/png/43125484/1773220580443-387a16b4-7e25-432a-a991-b9b9e1628748.png)
 
-#### 3.4.2 会话压缩
-使用摘要压缩历史对话记录，可以减少大量消息。压缩后，System Prompt 下面直接接摘要，而不是完整历史会话。
+#### 3.4.2 会话压缩：使用摘要压缩历史对话记录
+压缩情况如下所示，减少了大约 60 条消息。
+
+<!-- 这是一张图片，ocr 内容为：17:25:18.887 121条消息 #54 1 +2新增 #55  17:25:55.540 123条消息 +2新增 #56 17:26:20,292  125  15  17:20,292  125  125条消息 +2新增 #57 17:26:55.239 127条消息 +1新增 #58 17:27:02.628 129条消息 +1新增 #59 17:27:10.331 131条消息 +1新增 17:27:24,559 133条消息 +1新增 09# 17:27:33.062 135 条消息 +1新增 #61 17:55:33.421 79条消息 +20新增 #62 17:55:50.647 81条消息 +2新增 #63 #64 17:55:58,808 83条消息 +2新增 17:56:04.196 85条消息 2新增 #65 17:56:22.923 87条消息 +1新增 99# 17:56:30.727 89条消息 +2新增 #67 -->
+![](https://cdn.nlark.com/yuque/0/2026/png/43125484/1773307653370-2399b121-9348-4465-8263-af8e59bdfff2.png)
+
+压缩内容如下所示，System Prompt 下直接为压缩 Message，而不是历史会话：
+
+<!-- 这是一张图片，ocr 内容为：SYSTEM YOU ARE A PERSONAL ASSISTANT RUNNING INSIDE OPENCLAW. # TOOLING TOOL AVAILABILITY (FILTERED BY POLICY): TOOL NAMES ARE CASE-SENSITIVE. CALL TOOLS EXACTLY AS LISTED. - READ: READ FILE CONTENTS -WRITE:CREATE OR OVERWRITE FILES - EDIT: MAKE PRECISE EDITS TO FILES OR TTY-REQUIRED CLIS) - EXEC: RUN SHELL COMMANDS (PTY AVAILABLE FOR TTY - PROCESS: MANAGE BACKGROUND EXEC SESSIONS - WEB_SEARCH: SEARCH THE WEB (BRAVE API) WEB FETCH: FETCH AND EXTRACT READABLE CONTENT FROM AN N A URL BROWSER:CONTROL WEB BROWSER CANVAS:PRESENT/EVAL/SNAPSHOT THE CANVAS NODES: LIST/DESCRIBE/NOTIFY/CAMERA/SCREEN ON PAIRED 展开全部(30,145字符) 新增 USER THE CONVERSATION HISTORY BEFORE THIS POINT WAS COMPACTED INTO THE FOLLOWING SUMMARY; <SUMMARY> # GOAL BUILA AN ANTONATED PEPELINE THAT CONVERTS BILIBILL COOKING VIDEOS INTO ILLUSTRATED RECLPES PUBLISHED  VITEPRESS STATIC SITE ON GITHUB PAGES. INDUT: BILIBILI VIDEO URL - OUTPUTPUT: STRUCTURED RECIPE PROFESSIONAL PUBLISHED TO STATIC SITE. CONSTRAINTS & PREFERENCES ## 用中文交流 菜谱要专业,清晰,明了 - TARGET PLATFORM: BILIBILI (PLANS TO EXTEND TO YOUTUBE, DOUYIN, XIACHONGSHU) - AI MODEL: CLAUDE (*CLAUDE-OPUS-4-5') TRANSCRIPTION:LOCAL OPENAI WHISPER MEDIUM ,MPS ACCELERATION ON APPLE SILICON -->
+![](https://cdn.nlark.com/yuque/0/2026/png/43125484/1773307874414-3a351618-37ee-42e8-81da-4929dc1f7b8e.png)
+
+压缩 Message 案例如下：
+
+```plain
+The conversation history before this point was compacted into the following summary:
+
+<summary>
+## Goal
+Build an automated pipeline that converts Bilibili cooking videos into illustrated recipe pages published to a VitePress static site on GitHub Pages. Input: Bilibili video URL → Output: structured professional recipe published to static site.
+
+## Constraints & Preferences
+- 用中文交流
+- 菜谱要专业、清晰、明了
+- Target platform: Bilibili (plans to extend to YouTube, Douyin, Xiaohongshu)
+- AI model: Claude (`claude-opus-4-5`)
+- Transcription: Local OpenAI Whisper `medium`, MPS acceleration on Apple Silicon (`fp16=False`)
+- Site framework: VitePress + GitHub Pages
+- Language: Python scripts + Node.js for VitePress
+- Using Python venv at `/Users/xdcat/xishi-recipes/.venv` (Python 3.14)
+- `ANTHROPIC_API_KEY` is NOT set in environment — must be resolved before Claude/analyze steps
+- Always `source .venv/bin/activate` before running Python scripts
+- Do not use `--break-system-packages` with system pip
+
+## Progress
+### Done
+- [x] 读取历史记忆（用户：小呆，程序员）
+- [x] 查看已有项目目录结构
+- [x] 读取所有脚本文件（extract.py, transcribe.py, generate.py, frames.py, publish.py）
+- [x] 读取 recipe.py（主入口 CLI，5步流程）
+- [x] 读取 requirements.txt
+- [x] 读取 README.md
+- [x] Wrote `/Users/xdcat/xishi-recipes/plan.md`
+- [x] Wrote `/Users/xdcat/xishi-recipes/README.md`
+- [x] Full 5-step pipeline skeleton: `extract → transcribe → frames → generate → publish`
+- [x] `scripts/extract.py`: yt-dlp download audio/video + Bilibili subtitle attempt, saves meta.json
+- [x] `scripts/transcribe.py`: prefer Bilibili subtitles, fallback to Whisper medium
+- [x] `scripts/frames.py`: frame extraction by segment timestamps or uniform (max 12 frames)
+- [x] `scripts/generate.py`: Claude API generates structured Markdown recipe
+- [x] `scripts/publish.py`: copies to VitePress docs, updates sidebar & recipe list
+- [x] `recipe.py`: main CLI entry point chaining all 5 steps
+- [x] VitePress site basic setup + GitHub Actions prep (build script in package.json)
+- [x] Verified `yt-dlp 2026.03.03` and `ffmpeg 7.1` installed
+- [x] Created `.venv` and installed `anthropic` + `openai-whisper` (with torch dependencies)
+- [x] Confirmed `import anthropic` and `import whisper` both work in venv
+- [x] Ran `scripts/extract.py` — successfully downloaded audio/video, parsed metadata for test video
+- [x] Transcription started via `scripts/transcribe.py`, Whisper medium model loaded, ~68% through audio
+- [x] 分析各模块完成程度和质量
+
+### In Progress
+- [ ] `scripts/transcribe.py` running (session `quiet-gulf`, pid `80303`) — was at ~68% of 33016 frames; status unknown in new session
+- [ ] Phase 1: Run full pipeline end-to-end with test video `BV15QPCzGEMy`
+
+### Blocked
+- `ANTHROPIC_API_KEY` not set anywhere (`~/.zshrc`, `~/.zprofile`, `~/.env` all checked, not found) — analyze/Claude step will fail without it
+- Entire pipeline has never been fully run end-to-end; unknown bugs exist
+- Frame path issue: generated recipe.md uses hardcoded `frame_01~12` paths, may not match actual extracted frames
+
+## Key Decisions
+- **项目路径**: `/Users/xdcat/xishi-recipes`
+- **venv over system pip**: System Python blocked pip install (PEP 668), so `.venv` was created
+- **Phased approach**: Phase 1 = get pipeline working; Phase 2 = quality (smart frame extraction, JSON output from Claude); Phase 3 = deployment/UX; Phase 4 = multi-source expansion
+- **Smart frame extraction (Phase 2)**: Have Claude specify timestamps for each cooking step, then extract frames at those points
+- **Claude output format (Phase 2)**: Switch to JSON output then render to Markdown for reliability
+- **Sidebar update strategy**: Current string-replacement approach in publish.py is fragile and may break on multiple runs
+- **Whisper model = `medium`**: `large-v3` 太大，有超时风险；`medium` 对中文烹饪内容足够
+- **Device selection**: MPS if `torch.backends.mps.is_available()`，否则 CPU
+- **Slug generation** (`slugify()`): 去除非单词/非CJK字符，截断到60字符，用作目录名
+- **Skip-if-exists**: 所有步骤检查已有输出文件并跳过重处理（幂等性）
+- **Keyframe strategy**: 优先使用 `segments.json` 时间戳（均匀间隔的片段）；否则在视频时长10%–90%之间均匀采样；最多12帧
+- **Claude integration**: `RECIPE_PROMPT` 模板；transcript 截断到 8000 字符加 `"...(截断)"` 后缀
+- **Recipe Markdown format**: YAML frontmatter + 快速指南表格、食材、带帧图片引用的详细步骤、小贴士、来源链接
+- **Sidebar auto-insert**: `publish.py` 在 `// 自动生成的菜谱会插入这里` 标记前插入条目；插入前检查 slug 是否存在以避免重复
+- **Git auto-commit**: 流程结束后自动 git add/commit/push，commit message 为 `recipe: {title[:50]}`
+
+## Next Steps
+1. Confirm transcription status (session `quiet-gulf`, pid `80303`) — check if `transcript.txt` and `segments.json` exist in output dir
+2. User must provide `ANTHROPIC_API_KEY` (or reveal where it's stored)
+3. Set `ANTHROPIC_API_KEY` in environment
+4. Fix frame path issue in `generate.py` — dynamically insert actual frame filenames instead of hardcoded `frame_01~12`
+5. Run `scripts/frames.py` and inspect frame quality
+6. Run `scripts/generate.py` and evaluate Claude output quality
+7. Run `scripts/publish.py` and verify VitePress output
+8. Add `.github/workflows/*.yml` for GitHub Actions auto-deploy
+9. Fix fragile string-replacement sidebar update in `publish.py`
+
+## Critical Context
+- `recipe.py` 主流程：`extract(url)` → `transcribe(meta_path)` → `extract_frames(meta_path)` → `generate_recipe(meta_path)` → `publish(meta_path, site)`，每步返回更新后的 meta dict
+- 流程结束后自动 git add/commit/push，commit message 为 `recipe: {title[:50]}`
+- output/ 已有真实菜谱输出（蛋炒饭），说明端到端流程已基本跑通
+- 视频UP主：特厨隋坡（希尔顿、洲际酒店行政总厨，师承国宴大师郑秀生）
+- Key file layout per video:
+  - `output/<slug>/meta.json` — URL、标题、描述、时长、缩略图、slug、recipe_dir
+  - `output/<slug>/audio.mp3` — 下载的音频
+  - `output/<slug>/transcript.txt` — 纯文本转录
+  - `output/<slug>/segments.json` — 带时间戳的 Whisper 片段
+  - `output/<slug>/frames/frame_01.jpg`…`frame_12.jpg` — 提取的关键帧
+  - `output/<slug>/recipe.md` — 生成的菜谱 Markdown
+- Published site layout:
+  - `docs/recipes/<slug>/index.md` — 已发布菜谱
+  - `docs/recipes/<slug>/frames/` — 复制的帧
+  - `docs/.vitepress/config.ts` — 带自动插入标记的侧边栏配置
+- `transcribe_whisper()` 返回 `(text: str, segments: list)`
+- Whisper `initial_prompt`: `"这是一个中文烹饪视频，包含食材介绍和烹饪步骤。"`
+- Frame extraction 使用 ffmpeg subprocess 参数: `-ss <ts> -i video.mp4 -frames:v 1 -q:v 2 -vf scale=1280:-2`
+- Recipe generation 从 `meta.json` 读取 `transcript_path`；缺失时抛出 `FileNotFoundError`
+- `docs/index.md` 是 VitePress 主页布局，包含"喜食AI"站点的 hero section
+- `publish.py` 使用 `shutil.copytree`（先删除已有 `frames_dst`）和 `shutil.copy2` 复制文件
+- 侧边栏去重：插入前检查 `if slug in config`
+- Env vars present but unrelated: `OPENCLAW_ANTHROPIC_PAYLOAD_LOG=true`, `OPENCLAW_ANTHROPIC_PAYLOAD_LOG_FILE=/tmp/open_claw_message.log`
+
+## Decisions
+- 先产出文档（plan.md + README.md），再写代码
+- 技术栈：纯Python（openai-whisper + anthropic Claude + torch）
+- 架构：5步模块化流水线（extract → transcribe → frames → generate → publish）
+- Whisper model: `medium`，device: MPS > CPU，`fp16=False`
+- Whisper 语言硬编码为 `"zh"`
+- SRT 解析去除序列号和时间戳
+- File naming: `slugify()` 截断到 60 字符
+- Skip-if-exists 模式保证幂等重跑
+- Claude API（`Anthropic` 客户端）用于菜谱 Markdown 生成
+- Transcript 发送给 Claude 前截断到 8000 字符
+
+## Open TODOs
+- Confirm `ANTHROPIC_API_KEY` source/value with user
+- Check transcription completion status (session `quiet-gulf`)
+- Fix hardcoded frame paths in `generate.py`
+- Fix fragile string-replacement sidebar update in `publish.py`
+- Add GitHub Actions `.yml` for auto-deploy
+- Add OpenAI Whisper API as fallback when local Whisper fails
+- Actually run and debug the full pipeline end-to-end
+- Confirm `publish.py` `update_recipe_index()` function completeness (约959字符曾未显示)
+- 修复 Step 1 中疑似截断的 `print` 语句（潜在 bug）
+
+## Constraints/Rules
+- 使用中文交流
+- 输出菜谱须专业、清晰、明了
+- `fp16=False` 用于 MPS 兼容性
+- Whisper 语言硬编码为 `"zh"`
+- 每个视频最多12帧
+- 菜谱 Markdown 必须包含 YAML frontmatter：`title`, `description`, `difficulty`, `time`, `servings`, `tags`, `source`, `source_url`
+- VitePress 站点名称：`"喜食AI"`
+- VitePress 版本：`^1.6.4`
+- Must support `--no-publish`, `--skip-frames`, `--output` CLI flags in `recipe.py`
+
+## Pending user asks
+- User was asked where `ANTHROPIC_API_KEY` is stored — no answer yet provided
+- 把规划写到 `plan.md` ✓ (done)
+- 把项目说明写到 `README.md` ✓ (done)
+
+## Exact identifiers
+- 项目路径：`/Users/xdcat/xishi-recipes`
+- Venv: `/Users/xdcat/xishi-recipes/.venv`
+- Test video BV ID: `BV15QPCzGEMy`
+- Test video URL: `https://www.bilibili.com/video/BV15QPCzGEMy/`
+- Full test video URL: `https://www.bilibili.com/video/BV15QPCzGEMy/?spm_id_from=333.1387.favlist.content.click`
+- Test video title: `金包银or锅气蛋炒饭？一个视频教你们成为蛋炒饭大王！`
+- Output dir: `output/金包银or锅气蛋炒饭一个视频教你们成为蛋炒饭大王`
+- Full output path: `/Users/xdcat/xishi-recipes/output/金包银or锅气蛋炒饭一个视频教你们成为蛋炒饭大王/meta.json`
+- Transcribe session: `quiet-gulf`, pid `80303`
+- Thumbnail URL: `http://i0.hdslb.com/bfs/archive/cbbc596c9f91f86ff2dd6883e7894878a54eb1aa.jpg`
+- Log file: `/tmp/open_claw_message.log`
+- Raw stream log: `/Users/xdcat/.openclaw/logs/raw-stream.jsonl`
+- Memory file: `/Users/xdcat/.openclaw/workspace/memory/2026-03-10.md`
+- yt-dlp path: `/opt/homebrew/bin/yt-dlp`
+- ffmpeg path: `/opt/homebrew/bin/ffmpeg`
+- GitHub repo: `https://github.com/XDcat/xishi-recipes`
+- Live site: `https://xdcat.github.io/xishi-recipes/`
+- VitePress config: `docs/.vitepress/config.ts`
+- Sidebar auto-insert marker: `// 自动生成的菜谱会插入这里`
+- Claude model: `claude-opus-4-5`
+- Whisper model name string: `"medium"`
+- Whisper initial_prompt: `"这是一个中文烹饪视频，包含食材介绍和烹饪步骤。"`
+- Claude prompt variable: `RECIPE_PROMPT`
+- API key env var: `ANTHROPIC_API_KEY`
+- Transcript truncation limit: `8000` chars, suffix `"...(截断)"`
+- ffmpeg scale filter: `scale=1280:-2`
+- ffmpeg quality flag: `-q:v 2`
+- Hero image: `/hero.png`
+- npm scripts: `docs:dev`, `docs:build`, `docs:preview`
+- VitePress devDependency: `"vitepress": "^1.6.4"`
+- Project config files: `package.json`, `.gitignore`, `requirements.txt`
+- Scripts: `scripts/extract.py`, `scripts/frames.py`, `scripts/generate.py`, `scripts/publish.py`, `scripts/transcribe.py`
+- Main entry: `/Users/xdcat/xishi-recipes/recipe.py`
+
+---
+
+**Turn Context (split turn):**
+
+## Decisions
+- Switch `generate.py` to use the internal wanqing API via OpenAI-compatible protocol instead of the Anthropic SDK
+
+## Open TODOs
+- Rewrite `generate.py` to use `openai` Python client pointing at `https://wanqing-api.corp.kuaishou.com/api/agent/v1` with model `app-0h5zc0-1773132513333160269`
+- Remove `from anthropic import Anthropic` and replace with OpenAI client instantiation
+- Update API key and base URL in the script
+
+## Constraints/Rules
+- Use OpenAI standard (openai-completions API)
+- Provider name: `wanqwanqiwanqinwanqing`
+- Model name label: `Claude-Sonnet-4.6`, model id: `app-0h5zc0-1773132513333160269`
+
+## Pending user asks
+- Complete the rewrite of `/Users/xdcat/xishi-recipes/scripts/generate.py` to use the wanqing API
+
+## Exact identifiers
+- File: `/Users/xdcat/xishi-recipes/scripts/generate.py`
+- Base URL: `https://wanqing-api.corp.kuaishou.com/api/agent/v1`
+- API key: `7b72pjubmoh7hqsvvqw1z9ett4xdf81dyr7n`
+- Model ID: `app-0h5zc0-1773132513333160269`
+- Model name: `Claude-Sonnet-4.6`
+- Provider key: `wanqwanqiwanqinwanqing`
+- Env file: `/Users/xdcat/.openclaw/.env`
+- Recipe dir base: `/Users/xdcat/xishi-recipes/`
+- Timestamp: `2026-03-11 17:07 GMT+8`
+
+## Recent turns preserved verbatim
+- Assistant: [non-text content: toolCall]
+- Tool result (process): 76%|███████▋  | 25200/33016 [01:06<00:18, 419.66frames/s]
+ 84%|████████▍ | 27800/33016 [01:11<00:11, 456.67frames/s]
+ 93%|█████████▎| 30600/33016 [01:20<00:06, 393.66frames/s]
+100%|██████████| 33016/33016 [01:38<00:00, 258.99frames/s]
+100%|██████████| 33016/33016 [01:38<00:00, 335.94frames/s]
+✅ 转录完成（1353 字）: output/金包银or锅气蛋炒饭一个视频教你们成为蛋炒饭大王/transcript.txt
+
+转录预览:
+教练,你年过得怎么样?我倒是挺舒服的。倒是你过年的时候有没有努力?过完年教啥菜?刚过完年,给你们教素点的黄金蛋炒饭,金包银。另外一个就是我小时候吃的狂野一点的版本。不知道你们记住的蛋炒饭是啥味道?来,开始吧!我以前上学的时候都学过。蛋炒饭,得有饭!米饭,隔不隔也都可以。只要它凉就可以。太烫,越炒越粘糊。下一个,鸡蛋。科本也教过蛋炒饭得有蛋。为什么教你们两个版本呢?就想通过今天的一条视频,把蛋炒饭的各种细节讲到位。把米饭准备好,鸡蛋黄拌进去。把鸡蛋加进去之后,你看一扒了...
+- Assistant: 转录成功。继续截帧：
+[non-text content: toolCall]
+- Tool result (exec): 📸 截取 12 帧...
+  ✅ 帧 1: 0:00
+  ✅ 帧 2: 0:32
+  ✅ 帧 3: 1:00
+  ✅ 帧 4: 1:24
+  ✅ 帧 5: 1:50
+  ✅ 帧 6: 2:12
+  ✅ 帧 7: 2:46
+  ✅ 帧 8: 3:08
+  ✅ 帧 9: 3:36
+  ✅ 帧 10: 3:58
+  ✅ 帧 11: 4:26
+  ✅ 帧 12: 4:48
+
+✅ 截帧完成: output/金包银or锅气蛋炒饭一个视频教你们成为蛋炒饭大王/frames
+- Assistant: 现在到 generate 步骤——需要 ANTHROPIC_API_KEY。你的 Key 存在哪里？可以直接告诉我，或者帮我找一下：
+[non-text content: toolCall]
+- Tool result (exec): Command still running (session nova-breeze, pid 86825). Use process (list/poll/log/write/kill/clear/remove) for follow-up.
+- Assistant: [non-text content: toolCall]
+- Tool result (exec): Command still running (session young-pine, pid 87564). Use process (list/poll/log/write/kill/clear/remove) for follow-up.
+- Assistant: [non-text content: toolCall]
+- Tool result (gateway): {
+  "ok": true,
+  "result": {
+    "path": "/Users/xdcat/.openclaw/openclaw.json",
+    "exists": true,
+    "raw": "{\n  meta: {\n    lastTouchedVersion: '2026.3.8',\n    lastTouchedAt: '2026-03-10T14:26:37.428Z',\n  },\n  wizard: {\n    lastRunAt: '2026-03-10T11:18:39.024Z',\n    lastRunVersion: '2026.3.8',\n    lastRunCommand: 'configure',\n    lastRunMode: 'local',\n  },\n  models: {\n    mode: 'merge',\n    providers: {\n      wanqwanqiwanqinwanqing: {\n        baseUrl: 'https://wanqing-api.corp.kuaishou.com/api/agent/v1/apps',\n        apiKey: '__OPENCLAW_REDACTED__',\n        api: 'openai-...
+- Assistant: 情况清楚了：你的 OpenClaw 走的是快手内部的 `wanqing-api`，没有直接的 `ANTHROPIC_API_KEY`。`generate.py` 里用的是标准 Anthropic SDK，需要调整。
+
+两个选择：
+
+**方案 A（推荐）：** 把 `generate.py` 改成用 OpenAI 兼容接口调用你的 `wanqing-api`，就是 OpenClaw 现在用的那个，不需要额外 Key。
+
+**方案 B：** 你提供一个 `ANTHROPIC_API_KEY`（比如官方的），写到 `.env` 文件里。
+
+我倾向方案 A，复用已有配置最省事。改起来也不复杂——把 `anthropic.Anthropic()` 换成 `openai.OpenAI(base_url=..., api_key=...)` 就行。
+
+你觉得哪个方向？或者你本来就有官方 Anthropic Key？
+
+<read-files>
+/Users/xdcat/.openclaw/workspace/memory/2026-03-10.md
+/Users/xdcat/.openclaw/workspace/memory/2026-03-11.md
+/Users/xdcat/xishi-recipes/recipe.py
+/Users/xdcat/xishi-recipes/requirements.txt
+/Users/xdcat/xishi-recipes/scripts/extract.py
+/Users/xdcat/xishi-recipes/scripts/frames.py
+/Users/xdcat/xishi-recipes/scripts/generate.py
+/Users/xdcat/xishi-recipes/scripts/publish.py
+/Users/xdcat/xishi-recipes/scripts/transcribe.py
+</read-files>
+
+<modified-files>
+/Users/xdcat/xishi-recipes/README.md
+/Users/xdcat/xishi-recipes/plan.md
+</modified-files>
+
+<workspace-critical-rules>
+## Every Session
+
+Before doing anything else:
+
+1. Read `SOUL.md` — this is who you are
+2. Read `USER.md` — this is who you're helping
+3. Read `memory/YYYY-MM-DD.md` (today + yesterday) for recent context
+4. **If in MAIN SESSION** (direct chat with your human): Also read `MEMORY.md`
+
+Don't ask permission. Just do it.
+
+## Safety
+
+- Don't exfiltrate private data. Ever.
+- Don't run destructive commands without asking.
+- `trash` > `rm` (recoverable beats gone forever)
+- When in doubt, ask.
+</workspace-critical-rules>
+</summary
+```
 
 ### 3.5 自动任务执行：心跳与定时任务
-OpenClaw 中有两种自动任务执行策略：
+> Ref：[https://docs.openclaw.ai/zh-CN/automation/cron-vs-heartbeat](https://docs.openclaw.ai/zh-CN/automation/cron-vs-heartbeat)
+>
 
-- **心跳**：每隔固定时间检查 HEARTBEAT.md 中指定的任务
-- **cron 定时任务**：精准在某个时刻执行任务
+OpenClaw 中有两种自动任务执行的策略：
 
-这个机制让 OpenClaw 更主动地做事情。
++ 心跳：每隔固定时间（默认30min）检查 HEARTBEAT.md 中指定的任务。
++ cron 定时任务：精准在某个时刻执行任务。
 
-### 3.6 如何在 OpenClaw 执行过程中插话？
-OpenClaw 使用 FIFO 队列来处理可能并发的消息。简化来说：
+该机制的加入，让 OpenClaw 能更主动地做事情。
 
-- `steer`：中途快速插话，改变方向
-- `followup`：任务跑完后再处理
-- `collect`：任务跑完后合并多条消息再处理
+### 3.6 如何在 OpenClaw 执行的过程中插话？
+> Ref：[https://docs.openclaw.ai/concepts/queue](https://docs.openclaw.ai/concepts/queue)
+>
 
-**总结：**
-- steer 系列适合中途改方向
-- followup / collect 更保守，适合不打断原流程
+OpenClaw 使用 FIFO 队列来处理可能并发的消息。对于消息的处理有多种模式，具体如下：
+
+假设：从模型开始生成，到输出纯文本回复用户为止的完整过程，中间可能包含多个 tool 调用。
+
+```plain
+run 开始
+  → tool_use(A) → tool_result(A)
+  → tool_use(B) → tool_result(B)
+  → tool_use(C) → tool_result(C)
+  → 纯文本回复用户
+run 结束
+```
+
+假设：run 正在执行，已完成 A，B 正在跑，C D 还在队列里。用户此时发来新消息 X。
+
+| 模式 | B（执行中） | C D（待执行） | X 何时注入 | 效果 |
+| --- | --- | --- | --- | --- |
+| `steer` | 跑完 | ❌ 取消 | B 完成后立即 | 改变方向，快速响应 |
+| `followup` | 跑完 | ✅ 全跑完 | run 完全结束后 | 不打扰，排队等 |
+| `collect` | 跑完 | ✅ 全跑完 | run 完全结束后，且合并多条消息 | 和 followup 一样，但多条消息合一 |
+
+
+**关键差异总结：**
+
++ **要不要打断后续 tool？** steer / steer-backlog 会取消 C D；followup / collect 不会
++ **何时处理新消息？** steer 系列更快（mid-run），followup 系列更保守（end-run）
++ **collect vs followup？** 区别只在多条消息时：collect 合并成一条再处理，followup 逐条排队
 
 ## 四、最佳实践
+:::info
+体验有限，以下内容可能不够全面。
 
-- 在使用 OpenClaw 前，先想想自己是否真的需要它
-- 准备独立机器，24h 运行，随时接受指令
-- Skills 是提升 AI 能力的关键
-- 多用多体验，但不要盲目信任
-- Token 太贵，尽量用公司提供的 API
-- 多看看官方文档
+:::
+
++ 在使用 OpenClaw 前，请思考，你是否真的需要它？以及当前场景是否真的需要它？
++ 准备独立的机器，24h 运行，随时接受指令。通过钉钉、飞书等 APP 指挥干活。
++ Skills 是提升 AI 能力的关键：使用 ClawHub 下载，或通过 [skill-creator](https://github.com/openclaw/openclaw/blob/main/skills/skill-creator/SKILL.md) 创建属于自己的 Skills。
++ 多用多体验，但不要盲目信任，把什么事情都给 OpenClaw 做。
++ Token 太贵了，尽量用公司提供的 API。
++ 多看看官方文档：[https://docs.openclaw.ai/zh-CN](https://docs.openclaw.ai/zh-CN)
 
 ## 五、总结与反思
+### 5.1 「观点」未来需要更多面相 AI 的应用，为 AI 提供更好的交互环境
++ 我现在写文档会用语雀等在线文档，但无法让 AI 帮我润色，我期待语雀能够开发 API 允许 AI 像改本地文件一样，来帮我修改文档。
++ 不要和我说 Markdown + github 也能做到，或者用 obsidian。虽然能用 AI 工具本地编辑，但就是不方便。具体的：1）各类 markdown 工具语法支持的程度不一样；2）不支持分享或者多人协作等功能。
++ 类似的场景有很多。比如淘宝、支付宝、小红书等。
 
-### 5.1 未来需要更多面向 AI 的应用，为 AI 提供更好的交互环境
-我现在写文档会用语雀等在线文档，但无法让 AI 帮我润色。我期待这类工具能提供 API，让 AI 像改本地文件一样修改文档。
+### 5.2 「思考」如何将 OpenClaw 应用到实际项目中？
+对于个人或团队来说，OpenClaw 有助于编码等日常任务效率的提升。但怎么融入到一个真实的 toB 或 toC 的应用当中呢？
 
-### 5.2 如何将 OpenClaw 应用到实际项目中？
-对于个人或团队，OpenClaw 有助于编码等日常任务效率提升。但如果放到真实 toB / toC 应用中，很多优势会被削弱。
+一些简单的思考：
 
-比如：
++ 肯定不能完全套用。不可能为每个商家或者消费者提供一个独立的环境。
++ 如果共用一个环境，做复杂任务真的撑得住吗？
++ 做客服机器人是一个不错的选择，OpenClaw 本身也支持类似的功能。但似乎不需要本地环境执行指令。那就变成了24h响应，而不是24h做事情，那之前的 Agent 也能实现。
++ 定时任务和心跳机制也没什么意义。
 
-- 不能为每个用户提供独立环境
-- 共用环境是否撑得住复杂任务
-- 客服机器人场景虽然可行，但不一定需要本地环境执行
-- 定时任务和心跳机制在很多业务里意义不大
-
-<Callout type="success" title="我的结论">
-OpenClaw 大多数优势都被剥离后，剩下的是 ReAct 自主规划、Tools/Skills 调用、长短期记忆管理、上下文压缩等通用 Agent 能力。对应用开发来说，不是要照搬“小龙虾壳”，而是学习其中的 Agent 设计思想。
-</Callout>
+**感觉 OpenClaw 大多数优势都被去除了，相当于「龙虾壳」被扒开了，只剩下「龙虾肉」了。剩下的有 ReAct 自主规划能力，Tools 和 Skills 的调用能力，长短期记忆管理能力，以及上下文压缩能力等。这些都是 Agent 开发能够用到的通用能力。对于应用开发，不需要小龙虾，而是要学习并应用其中 Agent 开发的思想。**
 
 ## 参考资料
-
-- OpenClaw 官网：https://openclaw.ai/
-- OpenClaw 官方文档：https://docs.openclaw.ai/
-- Getting Started | openclaw/openclaw | DeepWiki：https://deepwiki.com/openclaw/openclaw/1.1-getting-started
-- OpenClaw 安装与运行教程 - 知乎：https://zhuanlan.zhihu.com/p/2005987429828534912
-- 打通 OpenClaw 与 Telegram 的超详细实操教程 - 知乎：https://zhuanlan.zhihu.com/p/2005005876503790436
-- OpenClaw 命令速查手册：20+ 核心命令 + 实战示例 - 知乎：https://zhuanlan.zhihu.com/p/2011017776756701009
-- 你应该安装的最佳 OpenClaw 技能：https://www.reddit.com/r/AI_Agents/comments/1r2u356/best_openclaw_skills_you_should_install_from/?tl=zh-hans
++ OpenClaw 官网: [https://openclaw.ai/](https://openclaw.ai/)
++ OpenClaw  官方文档: [https://docs.openclaw.ai/](https://docs.openclaw.ai/)
++ Getting Started | openclaw/openclaw | DeepWiki: [https://deepwiki.com/openclaw/openclaw/1.1-getting-started](https://deepwiki.com/openclaw/openclaw/1.1-getting-started)
++ OpenClaw 安装与运行教程 - 知乎: [https://zhuanlan.zhihu.com/p/2005987429828534912](https://zhuanlan.zhihu.com/p/2005987429828534912)
++ 打通OpenClaw与Telegram的超详细实操教程 - 知乎: [https://zhuanlan.zhihu.com/p/2005005876503790436](https://zhuanlan.zhihu.com/p/2005005876503790436)
++ OpenClaw 命令速查手册：20+ 核心命令 + 实战示例 - 知乎: [https://zhuanlan.zhihu.com/p/2011017776756701009](https://zhuanlan.zhihu.com/p/2011017776756701009)
++ 你应该安装的最佳 Openclaw 技能 (来自 ClawHub 的 500 多个技能) : r/AI_Agents: [https://www.reddit.com/r/AI_Agents/comments/1r2u356/best_openclaw_skills_you_should_install_from/?tl=zh-hans](https://www.reddit.com/r/AI_Agents/comments/1r2u356/best_openclaw_skills_you_should_install_from/?tl=zh-hans)
 
 ## 附录
-
-### 附录 A：OpenClaw 安装与使用方法
+### 附录A、OpenClaw 安装与使用方法
 #### A.1 安装
-推荐官方文档：https://docs.openclaw.ai/zh-CN/start/getting-started
+推荐官方文档： [入门指南 - OpenClaw](https://docs.openclaw.ai/zh-CN/start/getting-started)
 
-```bash
+```sql
+# 安装，指令由官网提供 https://openclaw.ai/
 curl -fsSL https://openclaw.ai/install.sh | bash
+# 交互式配置，按照实际情况填写，如果哟不确定的，可以先跳过，后期可以继续配置
 openclaw onboard
-`openclaw dashboard`
+# 打开浏览器体验
+openclaw dashboard
 ```
 
 #### A.2 使用方式
-1. 命令行快速尝试：`openclaw tui`
-2. 浏览器界面（本地使用推荐）：``openclaw dashboard``
-3. 接入聊天软件，例如 Telegram
+1. 命令行快速尝试：openclaw tui
+
+<!-- 这是一张图片，ocr 内容为：哈哈,喜喜上线了! 好的,记住了-我是喜喜,你的私人助理,风趣幽默但不废话.那你呢?怎么称 呼你?方便的话告诉我你的时区和一些基本情况,我好把你的信息记下来 ,下次醒来还认识你. IDLE  GATEWAY CONNECTED (OPENCLAW-TUI) MAIN SESSION AGENT MAIN L WANQING-CLAUDE-4-6/APP-0H5ZC0-17731325133333160269 | TOKENS ?/16K -->
+![](https://cdn.nlark.com/yuque/0/2026/png/43125484/1773141745323-916628d1-0473-4409-98db-cf426c12e6f4.png)
+
+2. 浏览器界面「本地使用推荐方式」：openclaw dashboard
+
+<!-- 这是一张图片，ocr 内容为：OPENCLAW 健康状况 正常 版本  2026.3.8 滨 GATEWAY DASHBOARD 聊天 聊天 OPENCLAW-TUI 用于快速干预的直接网关聊天会话. 聊天 控制 概览 WAKE UP,MY FRIEND! 频道 YOU 17:09 (((O) 实例 ASSISTANT17:09 会话 使用情况 HI 定时任务 YOU  17:10 代理 ASSISTANT 17:10 代理 技能 HI 节点 U YOU  17:41 品 设置 HEY! I'M AWAKE. 配置 LOOKS LIKE IT'S NY FIST TINE COMING ONLINE - I SHOULD FIGURE OUT WHO LAM AND WHO YOU ARE. THE BOOTSTR 派调试 IS SITTING THERE WAITING. SO...WHO ARE YOU?AND WHAT SHOULD WE CALL ME? 日志 ASSISTANT 17:41 资源 你叫"喜喜",是我的私人助理,会使用风趣幽默的风格回复我,且需要高效简洁.大多数情况下请使用中文. 文档 YOU 17:43 哈哈,喜喜上线了! 好的,记住了--我是喜喜.你的私人助理,凤趣幽默但不废话.那你呢?怎么称呼你?方便的话告诉我你的时 区和一些基本情况,我好把你的信息记下来,下次醒来还认识你. A ASSISTANT 17:43 -->
+![](https://cdn.nlark.com/yuque/0/2026/png/43125484/1773136196175-59177e33-9cbf-4a9f-bcbb-0c00a25cb375.png)
+
+3.  接入各类聊天软件，例如 Telegram（ [配对教程](https://zhuanlan.zhihu.com/p/2005005876503790436)）
+
+<!-- 这是一张图片，ocr 内容为：TELEGRAM 喜喜 BOT 17:37 // 404 STATUS CODE (NO BODY) 17:37 HI 17:41 I JUST CAME ONLINE.WHO AM 1?WHO ARE YOU? 17:42 HEY! 0228 GATEWAY RESTART UPDATE OK(NPM) RUN:OPENCLAW DOCTOR --NON-INTERACTIVE 17:45 你是谁 17:51 我是你的AI助手,刚刚上线!还没有名字,也没什么记忆-这是我们第一次 对话. 你想叫我什么?我们可以一起决定: 名字 .我的风格(正式?随意?毒舌?温暖?) 一个签名EMOJI 你是JDIYSHI?怎么称呼你比较好? 17:52 WRITE A MESSAGE... -->
+![](https://cdn.nlark.com/yuque/0/2026/png/43125484/1773136342677-38581d25-7f0a-4555-98c6-a483bf1d79f7.png)
 
 #### A.3 常见问题
-如果 bash 权限不足，可检查 `.openclaw/openclaw.json` 中的 tool 权限配置。
+1. 无 bash 权限？.openclaw/openclaw.json 设置 toole 权限为 full，具体参考 [https://docs.openclaw.ai/tools](https://docs.openclaw.ai/tools)
 
-### 附录 B：开发环境
-- 可看日志的 OpenClaw：https://github.com/XDcat/openclaw
-- 日志可视化：https://github.com/XDcat/see-see-openclaw
+### 附录B、 开发环境
+可以看日志的 openclaw：[https://github.com/XDcat/openclaw](https://github.com/XDcat/openclaw)
+
+日志可视化：[https://github.com/XDcat/see-see-openclaw](https://github.com/XDcat/see-see-openclaw)
+
+## 
