@@ -16,10 +16,10 @@ PI Agent 提供的核心 tool
 
 :::
 
-+ `<font style={{ color: '#DF2A3F' }}>read</font>`<font style={{ color: '#DF2A3F' }}>：读取文件内容</font>
-+ `<font style={{ color: '#DF2A3F' }}>write</font>`<font style={{ color: '#DF2A3F' }}>：创建或覆盖文件</font>
-+ `<font style={{ color: '#DF2A3F' }}>edit</font>`<font style={{ color: '#DF2A3F' }}>：对文件进行精确编辑</font>
-+ `<font style={{ color: '#DF2A3F' }}>exec</font>`<font style={{ color: '#DF2A3F' }}>：执行 Shell 命令（支持 PTY，适用于需要 TTY 的 CLI）</font>
++ <font style={{ color: '#DF2A3F' }}>`read`</font><font style={{ color: '#DF2A3F' }}>：读取文件内容</font>
++ <font style={{ color: '#DF2A3F' }}>`write`</font><font style={{ color: '#DF2A3F' }}>：创建或覆盖文件</font>
++ <font style={{ color: '#DF2A3F' }}>`edit`</font><font style={{ color: '#DF2A3F' }}>：对文件进行精确编辑</font>
++ <font style={{ color: '#DF2A3F' }}>`exec`</font><font style={{ color: '#DF2A3F' }}>：执行 Shell 命令（支持 PTY，适用于需要 TTY 的 CLI）</font>
 + `process`：管理后台 exec 会话
 + `web_search`：搜索网页（Brave API）
 + `web_fetch`：从 URL 获取并提取可读内容
@@ -33,17 +33,17 @@ PI Agent 提供的核心 tool
 
 :::
 
-+ `<font style={{ color: '#DF2A3F' }}>message</font>`<font style={{ color: '#DF2A3F' }}>：发送消息及频道操作</font>
-+ `<font style={{ color: '#DF2A3F' }}>gateway</font>`<font style={{ color: '#DF2A3F' }}>：重启、应用配置或对正在运行的 OpenClaw 进程执行更新</font>
-+ `<font style={{ color: '#DF2A3F' }}>agents_list</font>`<font style={{ color: '#DF2A3F' }}>：列出在 </font>`<font style={{ color: '#DF2A3F' }}>runtime="subagent"</font>`<font style={{ color: '#DF2A3F' }}> 时允许通过 </font>`<font style={{ color: '#DF2A3F' }}>sessions_spawn</font>`<font style={{ color: '#DF2A3F' }}> 使用的 OpenClaw agent ID（非 ACP 运行时 ID）</font>
-+ `<font style={{ color: '#DF2A3F' }}>sessions_list</font>`<font style={{ color: '#DF2A3F' }}>：列出其他会话（包括子 agent），支持过滤和查看最近记录</font>
-+ `<font style={{ color: '#DF2A3F' }}>sessions_history</font>`<font style={{ color: '#DF2A3F' }}>：获取另一个会话/子 agent 的历史记录</font>
-+ `<font style={{ color: '#DF2A3F' }}>sessions_send</font>`<font style={{ color: '#DF2A3F' }}>：向另一个会话/子 agent 发送消息</font>
-+ `<font style={{ color: '#DF2A3F' }}>subagents</font>`<font style={{ color: '#DF2A3F' }}>：列出、干预或终止当前请求会话的子 agent 运行</font>
-+ `<font style={{ color: '#DF2A3F' }}>session_status</font>`<font style={{ color: '#DF2A3F' }}>：显示等效于 /status 的状态卡片（用量 + 时间 + 推理/详细/提升模式）；用于模型使用情况查询（</font><font style={{ color: '#DF2A3F' }}>📊</font><font style={{ color: '#DF2A3F' }}> session_status）；支持按会话覆盖模型</font>
-+ `<font style={{ color: '#DF2A3F' }}>memory_get</font>`<font style={{ color: '#DF2A3F' }}>：安全读取 MEMORY.md 或 memory/*.md 中的片段，支持 from/lines 参数；在 memory_search 之后使用，仅拉取所需行，保持上下文精简</font>
-+ `<font style={{ color: '#DF2A3F' }}>memory_search</font>`<font style={{ color: '#DF2A3F' }}>：强制回忆步骤：在回答关于过往工作、决策、日期、人物、偏好或待办事项的问题前，对 MEMORY.md + memory/*.md（以及可选的会话记录）进行语义搜索；返回顶部片段及路径 + 行号。若响应中 </font>`<font style={{ color: '#DF2A3F' }}>disabled=true</font>`<font style={{ color: '#DF2A3F' }}>，则记忆检索不可用，应告知用户</font>
-+ `<font style={{ color: '#DF2A3F' }}>sessions_spawn</font>`<font style={{ color: '#DF2A3F' }}>：启动一个隔离的子 agent 或 ACP 编码会话（</font>`<font style={{ color: '#DF2A3F' }}>runtime="acp"</font>`<font style={{ color: '#DF2A3F' }}> 需要提供 </font>`<font style={{ color: '#DF2A3F' }}>agentId</font>`<font style={{ color: '#DF2A3F' }}>，除非已配置 </font>`<font style={{ color: '#DF2A3F' }}>acp.defaultAgent</font>`<font style={{ color: '#DF2A3F' }}>；ACP 运行时 ID 遵循 </font>`<font style={{ color: '#DF2A3F' }}>acp.allowedAgents</font>`<font style={{ color: '#DF2A3F' }}>，而非 </font>`<font style={{ color: '#DF2A3F' }}>agents_list</font>`<font style={{ color: '#DF2A3F' }}>）</font>
++ <font style={{ color: '#DF2A3F' }}>`message`</font><font style={{ color: '#DF2A3F' }}>：发送消息及频道操作</font>
++ <font style={{ color: '#DF2A3F' }}>`gateway`</font><font style={{ color: '#DF2A3F' }}>：重启、应用配置或对正在运行的 OpenClaw 进程执行更新</font>
++ <font style={{ color: '#DF2A3F' }}>agents_list</font><font style={{ color: '#DF2A3F' }}>：列出在 </font><font style={{ color: '#DF2A3F' }}>runtime="subagent"</font><font style={{ color: '#DF2A3F' }}> 时允许通过 </font><font style={{ color: '#DF2A3F' }}>`sessions_spawn`</font><font style={{ color: '#DF2A3F' }}> 使用的 OpenClaw agent ID（非 ACP 运行时 ID）</font>
++ <font style={{ color: '#DF2A3F' }}>`sessions_list`</font><font style={{ color: '#DF2A3F' }}>：列出其他会话（包括子 agent），支持过滤和查看最近记录</font>
++ <font style={{ color: '#DF2A3F' }}>`sessions_history`</font><font style={{ color: '#DF2A3F' }}>：获取另一个会话/子 agent 的历史记录</font>
++ <font style={{ color: '#DF2A3F' }}>`sessions_send`</font><font style={{ color: '#DF2A3F' }}>：向另一个会话/子 agent 发送消息</font>
++ <font style={{ color: '#DF2A3F' }}>`subagents`</font><font style={{ color: '#DF2A3F' }}>：列出、干预或终止当前请求会话的子 agent 运行</font>
++ <font style={{ color: '#DF2A3F' }}>`session_status`</font><font style={{ color: '#DF2A3F' }}>：显示等效于 /status 的状态卡片（用量 + 时间 + 推理/详细/提升模式）；用于模型使用情况查询（</font><font style={{ color: '#DF2A3F' }}>📊</font><font style={{ color: '#DF2A3F' }}> session_status）；支持按会话覆盖模型</font>
++ <font style={{ color: '#DF2A3F' }}>`memory_get`</font><font style={{ color: '#DF2A3F' }}>：安全读取 MEMORY.md 或 memory/*.md 中的片段，支持 from/lines 参数；在 memory_search 之后使用，仅拉取所需行，保持上下文精简</font>
++ <font style={{ color: '#DF2A3F' }}>memory_search</font><font style={{ color: '#DF2A3F' }}>：强制回忆步骤：在回答关于过往工作、决策、日期、人物、偏好或待办事项的问题前，对 MEMORY.md + memory/*.md（以及可选的会话记录）进行语义搜索；返回顶部片段及路径 + 行号。若响应中 </font><font style={{ color: '#DF2A3F' }}>`disabled=true`</font><font style={{ color: '#DF2A3F' }}>，则记忆检索不可用，应告知用户</font>
++ <font style={{ color: '#DF2A3F' }}>sessions_spawn</font><font style={{ color: '#DF2A3F' }}>：启动一个隔离的子 agent 或 ACP 编码会话（</font><font style={{ color: '#DF2A3F' }}>runtime="acp"</font><font style={{ color: '#DF2A3F' }}> 需要提供 </font><font style={{ color: '#DF2A3F' }}>agentId</font><font style={{ color: '#DF2A3F' }}>，除非已配置 </font><font style={{ color: '#DF2A3F' }}>acp.defaultAgent</font><font style={{ color: '#DF2A3F' }}>；ACP 运行时 ID 遵循 </font><font style={{ color: '#DF2A3F' }}>acp.allowedAgents</font><font style={{ color: '#DF2A3F' }}>，而非 </font><font style={{ color: '#DF2A3F' }}>`agents_list`</font><font style={{ color: '#DF2A3F' }}>）</font>
 + `tts`：将文本转换为语音。音频会从工具结果中自动播放——调用成功后，回复仅需 NO_REPLY，避免重复消息
 
 :::info
@@ -62,7 +62,7 @@ ACP 是与 claude code 等编码 AI 交互的协议，可以通过 ACP 去调用
 
 :::
 
-<font style={{ color: '#DF2A3F' }}>对于类似"在 codex/claude code/gemini 中执行此操作"的请求，将其视为 ACP 运行时意图，调用 </font>`<font style={{ color: '#DF2A3F' }}>sessions_spawn</font>`<font style={{ color: '#DF2A3F' }}> 时设置 </font>`<font style={{ color: '#DF2A3F' }}>runtime: "acp"</font>`<font style={{ color: '#DF2A3F' }}>。</font>
+<font style={{ color: '#DF2A3F' }}>对于类似"在 codex/claude code/gemini 中执行此操作"的请求，将其视为 ACP 运行时意图，调用 </font><font style={{ color: '#DF2A3F' }}>sessions_spawn</font><font style={{ color: '#DF2A3F' }}> 时设置 </font><font style={{ color: '#DF2A3F' }}>`runtime: "acp"`</font><font style={{ color: '#DF2A3F' }}>。</font>
 
 在 Discord 中，除非用户另有要求，否则 ACP 运行时请求默认绑定到线程的持久会话（`thread: true`，`mode: "session"`）。
 
@@ -118,7 +118,7 @@ Skills 使用规范。
 
 :::
 
-+ <font style={{ color: '#DF2A3F' }}>若恰好有一个 skill 明确适用：使用 </font>`<font style={{ color: '#DF2A3F' }}>read</font>`<font style={{ color: '#DF2A3F' }}> 工具读取其 SKILL.md（位于 </font>`<font style={{ color: '#DF2A3F' }}><location></font>`<font style={{ color: '#DF2A3F' }}>），然后按照指引操作。</font>
++ <font style={{ color: '#DF2A3F' }}>若恰好有一个 skill 明确适用：使用 </font><font style={{ color: '#DF2A3F' }}>read</font><font style={{ color: '#DF2A3F' }}> 工具读取其 SKILL.md（位于 </font><font style={{ color: '#DF2A3F' }}>location</font><font style={{ color: '#DF2A3F' }}>），然后按照指引操作。</font>
 + <font style={{ color: '#DF2A3F' }}>若多个 skill 可能适用：选择最具体的一个，读取并遵循。</font>
 + <font style={{ color: '#DF2A3F' }}>若无明确适用的 skill：不读取任何 SKILL.md。</font>
 
@@ -372,7 +372,7 @@ Skills 使用规范。
 
 :::
 
-+ <font style={{ color: '#DF2A3F' }}>当有人说"记住这个" → 更新 </font>`<font style={{ color: '#DF2A3F' }}>memory/YYYY-MM-DD.md</font>`<font style={{ color: '#DF2A3F' }}> 或相关文件</font>
++ <font style={{ color: '#DF2A3F' }}>当有人说"记住这个" → 更新 </font><font style={{ color: '#DF2A3F' }}>`memory/YYYY-MM-DD.md`</font><font style={{ color: '#DF2A3F' }}> 或相关文件</font>
 
 :::info
 「自动」不断的成长。**这是一种 AI 不断进化的方式。可能难以用到固定任务中，但是对编码 Agent、个人 AI 助理等有重要借鉴意义。**
