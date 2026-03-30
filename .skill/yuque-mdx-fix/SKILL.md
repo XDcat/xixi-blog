@@ -26,9 +26,12 @@ Repair exported Markdown/MDX so Docusaurus can build it reliably.
 - Repeated fixes across `docs/AI-技术分享/`
 - Creating new scripts or modifying existing scripts when no safe reusable script exists yet
 
-## Bundled script
+## Bundled scripts
 
 - `scripts/fix_yuque_font_style.py`
+- `scripts/fix_yuque_images.py`
+
+### `scripts/fix_yuque_font_style.py`
 
 Solve the common Yuque export problem where inline `style="..."` or `style='...'` values break Docusaurus/MDX parsing. Run it manually from the repo root:
 
@@ -38,7 +41,17 @@ python3 .skill/yuque-mdx-fix/scripts/fix_yuque_font_style.py
 
 It scans `docs/AI-技术分享/` and rewrites matching `style` strings into JSX object syntax in place so the next `npm run build` can validate the result.
 
-Use it as a reusable example and starting point for future Yuque/MDX repair scripts, but do not treat it as the only allowed fix path.
+### `scripts/fix_yuque_images.py`
+
+Solve the Yuque export problem where remote image URLs may not render reliably in Docusaurus because of cross-origin or external asset issues. Run it manually from the repo root:
+
+```bash
+python3 .skill/yuque-mdx-fix/scripts/fix_yuque_images.py
+```
+
+It scans `docs/AI-技术分享/`, downloads remote images into `static/images/yuque/`, and rewrites the Markdown image links to local paths so the next `npm run build` can validate the result.
+
+Use these scripts as reusable examples and starting points for future Yuque/MDX repair scripts, but do not treat them as the only allowed fix path.
 
 ## Notes
 
