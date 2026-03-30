@@ -18,7 +18,7 @@
   - 用法：用于提示、强调、说明类内容块。
 - `ReadingCardMeta`
   - 路径：`src/components/ReadingCardMeta/index.tsx`
-  - 用法：用于文章卡片或阅读信息展示。
+  - 用法：仅用于读书卡片/阅读摘要类内容，不作为所有文章通用组件。
 
 ## Skills
 
