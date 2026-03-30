@@ -1,41 +1,45 @@
-# Website
+# xixi-blog
 
-This website is built using [Docusaurus](https://docusaurus.io/), a modern static website generator.
+这是一个基于 [Docusaurus](https://docusaurus.io/) 构建的静态博客站点。
 
-## Installation
+## 安装
 
 ```bash
 yarn
 ```
 
-## Local Development
+## 本地开发
 
 ```bash
 yarn start
 ```
 
-This command starts a local development server and opens up a browser window. Most changes are reflected live without having to restart the server.
+这个命令会启动本地开发服务，并打开浏览器窗口。大多数修改都会热更新，无需重启。
 
-## Build
+## 构建
 
 ```bash
 yarn build
 ```
 
-This command generates static content into the `build` directory and can be served using any static contents hosting service.
+这个命令会生成静态站点到 `build` 目录，可直接部署到任意静态托管服务。
 
-## Deployment
+## 部署
 
-Using SSH:
+使用 SSH：
 
 ```bash
 USE_SSH=true yarn deploy
 ```
 
-Not using SSH:
+不使用 SSH：
 
 ```bash
 GIT_USER=<Your GitHub username> yarn deploy
 ```
 
-If you are using GitHub pages for hosting, this command is a convenient way to build the website and push to the `gh-pages` branch.
+如果你使用 GitHub Pages，这个命令会构建站点并推送到 `gh-pages` 分支。
+
+## Skills
+
+- `yuque-mdx-fix` — `.skill/yuque-mdx-fix/` — 修复 Yuque 等导出的 Markdown/MDX 与 Docusaurus 的兼容问题；遇到通用问题时优先创建或更新脚本批量修复，遇到小问题可直接编辑文件。

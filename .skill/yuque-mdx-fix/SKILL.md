@@ -1,0 +1,45 @@
+---
+name: yuque-mdx-fix
+description: Repair Markdown/MDX exported from Yuque or similar editors when Docusaurus build fails due to JSX/style/HTML compatibility issues. Use when imported docs need style-string conversion, batch fixes, or repeatable build/debug workflows for site content.
+---
+
+# Yuque MDX Fix
+
+## Purpose
+
+Repair exported Markdown/MDX so Docusaurus can build it reliably.
+
+## Workflow
+
+1. Run `npm run build` to confirm the failure is real.
+2. If the problem is common or repeated, create or update a script under `scripts/` and use it to batch-fix the docs.
+3. If the problem is isolated or small, edit the affected file directly.
+4. Use `git` to roll back risky changes when an attempt goes wrong.
+5. Re-run `npm run build` after each fix until the build passes.
+6. Record the issue and the fix in `README.md`.
+
+## What this skill handles
+
+- Yuque-exported content that breaks Docusaurus/MDX parsing
+- `style="..."` or `style='...'` values that must become JSX object syntax
+- Repeated fixes across `docs/AI-技术分享/`
+- Creating new scripts or modifying existing scripts when no safe reusable script exists yet
+
+## Bundled script
+
+- `scripts/fix_yuque_font_style.py`
+
+Solve the common Yuque export problem where inline `style="..."` or `style='...'` values break Docusaurus/MDX parsing. Run it manually from the repo root:
+
+```bash
+python3 .skill/yuque-mdx-fix/scripts/fix_yuque_font_style.py
+```
+
+It scans `docs/AI-技术分享/` and rewrites matching `style` strings into JSX object syntax in place so the next `npm run build` can validate the result.
+
+Use it as a reusable example and starting point for future Yuque/MDX repair scripts, but do not treat it as the only allowed fix path.
+
+## Notes
+
+- Do not use this skill as a general blog-writing rule set.
+- Prefer the smallest safe change when only one file is affected.
