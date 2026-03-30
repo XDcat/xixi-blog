@@ -22,6 +22,7 @@ Repair exported Markdown/MDX so Docusaurus can build it reliably.
 
 - Yuque-exported content that breaks Docusaurus/MDX parsing
 - `style="..."` or `style='...'` values that must become JSX object syntax
+- External image links in exported docs that need to be downloaded into the project and rewritten to local paths
 - Repeated fixes across `docs/AI-技术分享/`
 - Creating new scripts or modifying existing scripts when no safe reusable script exists yet
 

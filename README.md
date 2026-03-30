@@ -42,4 +42,4 @@ GIT_USER=<Your GitHub username> yarn deploy
 
 ## Skills
 
-- `yuque-mdx-fix` — `.skill/yuque-mdx-fix/` — 修复 Yuque 等导出的 Markdown/MDX 与 Docusaurus 的兼容问题；遇到通用问题时优先创建或更新脚本批量修复，遇到小问题可直接编辑文件。
+- `yuque-mdx-fix` — `.skill/yuque-mdx-fix/` — 修复 Yuque 等导出的 Markdown/MDX 与 Docusaurus 的兼容问题；适合处理 style 语法、外链图片下载重写等通用问题，遇到通用问题时优先创建或更新脚本批量修复，遇到小问题可直接编辑文件。
