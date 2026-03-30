@@ -2,43 +2,23 @@
 
 这是一个基于 [Docusaurus](https://docusaurus.io/) 构建的静态博客站点。
 
-## 安装
+## Components
 
-```bash
-yarn
-```
+### 描述
 
-## 本地开发
+- 这里的 component 主要用于把常见内容块组件化，方便复用。
+- 写文章时，优先复用已有 component；只有现有 component 不够用时，再新增。
+- 如果修改了某个 component 的实现，需要同步检查并更新所有使用它的内容，避免页面表现不一致。
+- 这部分也可以当作一个轻量 skill 使用：先找现成 component，再决定是否新增。
 
-```bash
-yarn start
-```
+### 已有的 component
 
-这个命令会启动本地开发服务，并打开浏览器窗口。大多数修改都会热更新，无需重启。
-
-## 构建
-
-```bash
-yarn build
-```
-
-这个命令会生成静态站点到 `build` 目录，可直接部署到任意静态托管服务。
-
-## 部署
-
-使用 SSH：
-
-```bash
-USE_SSH=true yarn deploy
-```
-
-不使用 SSH：
-
-```bash
-GIT_USER=<Your GitHub username> yarn deploy
-```
-
-如果你使用 GitHub Pages，这个命令会构建站点并推送到 `gh-pages` 分支。
+- `Callout`
+  - 路径：`src/components/Callout/index.tsx`
+  - 用法：用于提示、强调、说明类内容块。
+- `ReadingCardMeta`
+  - 路径：`src/components/ReadingCardMeta/index.tsx`
+  - 用法：用于文章卡片或阅读信息展示。
 
 ## Skills
 
