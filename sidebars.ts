@@ -5,13 +5,13 @@ const sidebars: SidebarsConfig = {
     'intro',
     {
       type: 'category',
-      label: 'AI-阅读卡片',
-      items: ['AI-阅读卡片/ai-adoption-journey', 'AI-阅读卡片/harness-design-long-running-apps'],
+      label: 'AI-技术分享',
+      items: ['AI-技术分享/openclaw-principles', 'AI-技术分享/openclaw-System-Prompt'],
     },
     {
       type: 'category',
-      label: 'AI-技术分享',
-      items: ['AI-技术分享/openclaw-principles', 'AI-技术分享/openclaw-System-Prompt'],
+      label: 'AI-阅读卡片',
+      items: ['AI-阅读卡片/ai-adoption-journey', 'AI-阅读卡片/harness-design-long-running-apps'],
     },
     {
       type: 'category',
