@@ -13,6 +13,11 @@ const sidebars: SidebarsConfig = {
       label: 'AI-技术分享',
       items: ['AI-技术分享/openclaw-principles', 'AI-技术分享/openclaw-System-Prompt'],
     },
+    {
+      type: 'category',
+      label: '参考文档',
+      items: ['guid/docusaurus-mdx-syntax'],
+    },
   ],
 };
 

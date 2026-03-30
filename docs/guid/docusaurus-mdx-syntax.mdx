@@ -1,0 +1,208 @@
+---
+title: Docusaurus 支持的 MDX 语法清单
+sidebar_position: 99
+---
+
+# Docusaurus 支持的 MDX 语法清单
+
+## 0. 常用语法
+
+````markdown
+
+高亮 or 字体颜色
+<div style={{ color: 'red' }}>Hello</div>
+
+
+:::tip
+这是一个 tip。
+!!! 常用于高亮突出某个段落
+:::
+````
+
+## 1. 基础 Markdown
+
+Docusaurus 兼容标准 Markdown，并支持常见写法：
+
+- 标题 `#` / `##` / `###`
+- 段落与换行
+- 列表：有序 / 无序 / 嵌套列表
+- 引用块 `>`
+- 强调：`*italic*`、`**bold**`
+- 行内代码 `` `code` ``
+- 代码块
+- 链接 `[text](url)`
+- 图片 `![alt](src)`
+- 表格
+
+## 2. GFM 扩展
+
+Docusaurus 的 Markdown 也包含 GitHub Flavored Markdown 常用能力：
+
+- 任务列表 `- [ ]` / `- [x]`
+- 删除线 `~~text~~`
+- 自动链接
+- 表格语法增强
+
+## 3. Front matter
+
+页面顶部可使用 YAML front matter：
+
+```md
+---
+title: My Page
+sidebar_position: 1
+---
+```
+
+常见字段包括：
+
+- `title`
+- `sidebar_position`
+- `description`
+- `slug`
+
+## 4. Admonitions 提示块
+
+Admonitions 是 Docusaurus 很标志性的语法，用三冒号包裹内容：
+
+```md
+:::note
+这是一个 note。
+:::
+
+:::tip
+这是一个 tip。
+!!! 常用于高亮突出表示
+:::
+
+:::info
+这是一个 info。
+:::
+
+:::caution
+这是一个 caution。
+:::
+
+:::danger
+这是一个 danger。
+:::
+```
+
+也支持标题：
+
+```md
+:::tip[小提示]
+这里是内容。
+:::
+```
+
+## 5. 代码块增强
+
+Docusaurus 的代码块比普通 Markdown 更强，常见支持：
+
+- 语言标识高亮
+- 标题
+- 行号
+- 高亮指定行
+- Tabs 组合展示多语言代码
+
+示例：
+
+```md
+```js title="hello.js"
+console.log('hello');
+```
+```
+
+## 6. Tabs / TabItem
+
+用于展示多组选项卡内容，例如多语言示例：
+
+```mdx
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+<Tabs>
+  <TabItem value="js" label="JavaScript">
+    这里放 JS 示例
+  </TabItem>
+  <TabItem value="py" label="Python">
+    这里放 Python 示例
+  </TabItem>
+</Tabs>
+```
+
+## 7. MDX 组件
+
+Docusaurus 支持在 Markdown 中直接使用 React 组件：
+
+```mdx
+import MyComponent from '@site/src/components/MyComponent';
+
+<MyComponent />
+```
+
+也可以从 Markdown 文件导入并当组件使用。
+
+## 8. import / export
+
+MDX 允许页面里写 JS 模块语法：
+
+```mdx
+import React from 'react';
+export const name = 'xixi';
+```
+
+## 9. 原始 HTML / JSX
+
+在支持的场景下，可以混用 HTML / JSX：
+
+```mdx
+<div style={{ color: 'red' }}>Hello</div>
+```
+
+## 10. Directive 语法
+
+Docusaurus 使用了 `remark-directive`，因此可以使用 directive 风格扩展语法（具体行为取决于站点配置和插件支持）。
+
+## 11. 图片与资源
+
+支持常规 Markdown 图片，也常配合站点资源路径使用：
+
+```md
+![图片说明](./img/demo.png)
+```
+
+## 12. 数学公式 / Mermaid（取决于站点配置）
+
+如果项目启用了对应插件，还可支持：
+
+- 数学公式
+- Mermaid 图表
+
+这类能力不是所有 Docusaurus 站点默认开启。
+
+## 13. 小结
+
+如果你把 Docusaurus 的“MDX 语法”按实用角度看，核心就是：
+
+- 标准 Markdown
+- GFM 扩展
+- Admonitions
+- Code blocks
+- Tabs
+- React 组件嵌入
+- import / export
+- HTML / JSX 混写
+- Directive 扩展
+- 可选插件语法（公式、Mermaid 等）
+
+## 参考链接
+
+- [Markdown Features](https://docusaurus.io/docs/markdown-features)
+- [Admonitions](https://docusaurus.io/docs/markdown-features/admonitions)
+- [Code blocks](https://docusaurus.io/docs/markdown-features/code-blocks)
+- [MDX and React](https://docusaurus.io/docs/markdown-features/react)
+- [Tabs](https://docusaurus.io/docs/markdown-features/tabs)
+- [Images](https://docusaurus.io/docs/markdown-features/images)
+- [TOC](https://docusaurus.io/docs/markdown-features/toc)
