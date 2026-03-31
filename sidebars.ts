@@ -25,7 +25,7 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: '参考文档',
       items: ['guid/docusaurus-mdx-syntax', 'guid/writing-style-principles'],
-    },
+    }
   ],
 };
 

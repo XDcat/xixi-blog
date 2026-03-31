@@ -1,3 +1,7 @@
+---
+canShare: true
+---
+
 # pi agent 命令行使用指南
 
 本文档介绍如何在**不使用 TUI 交互界面**的情况下，通过命令行使用 pi agent。

@@ -2,7 +2,6 @@
 
 这是一个基于 [Docusaurus](https://docusaurus.io/) 构建的静态博客站点。
 
-
 ## Components
 ### 描述
 - 用于定制化、客制化使用，把常见内容块组件化，方便复用。

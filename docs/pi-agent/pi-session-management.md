@@ -1,3 +1,7 @@
+---
+canShare: true
+---
+
 # 深入理解 pi 的会话管理机制：/tree、/fork、/resume 全解析
 
 :::note
