@@ -14,7 +14,11 @@ const config: Config = {
   organizationName: 'xxxdcat',
   projectName: 'xixi-blog',
   onBrokenLinks: 'throw',
-  onBrokenMarkdownLinks: 'warn',
+  markdown: {
+    hooks: {
+      onBrokenMarkdownLinks: 'warn',
+    },
+  },
   i18n: {
     defaultLocale: 'zh-Hans',
     locales: ['zh-Hans'],

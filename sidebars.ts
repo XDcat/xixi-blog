@@ -15,16 +15,16 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: '参考文档',
-      items: ['guid/docusaurus-mdx-syntax'],
-    },
-    {
-      type: 'category',
       label: 'Pi Agent 源码专题',
       items: [
         'pi-agent/pi-session-management',
-        'pi-agent/system-message-deep-dive',
+        'pi-agent/pi-system-message-research',
       ],
+    },
+    {
+      type: 'category',
+      label: '参考文档',
+      items: ['guid/docusaurus-mdx-syntax', 'guid/writing-style-principles'],
     },
   ],
 };
