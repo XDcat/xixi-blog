@@ -2,6 +2,7 @@
 
 这是一个基于 [Docusaurus](https://docusaurus.io/) 构建的静态博客站点。
 
+
 ## Components
 ### 描述
 - 用于定制化、客制化使用，把常见内容块组件化，方便复用。
@@ -17,7 +18,3 @@
 - `ReadingCardMeta`
   - 路径：`src/components/ReadingCardMeta/index.tsx`
   - 用法：仅用于读书卡片/阅读摘要类内容，不作为所有文章通用组件。
-
-## Skills
-
-- `yuque-mdx-fix` — `.skill/yuque-mdx-fix/` — 修复 Yuque 等导出的 Markdown/MDX 与 Docusaurus 的兼容问题；包含 `style` 语法修复脚本和外链图片下载重写脚本，遇到通用问题时优先创建或更新脚本批量修复，遇到小问题可直接编辑文件。
