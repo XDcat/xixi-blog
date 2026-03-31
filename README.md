@@ -17,3 +17,13 @@
 - `ReadingCardMeta`
   - 路径：`src/components/ReadingCardMeta/index.tsx`
   - 用法：仅用于读书卡片/阅读摘要类内容，不作为所有文章通用组件。
+
+## Build 校验插件
+### 描述
+- 在构建阶段校验：`sidebars.ts` 索引到的文档必须包含 `canShare: true`。
+- 这样可以保证只有允许对外展示的文章才会进入站点发布流程。
+- 如果某篇文档被 sidebar 引用但缺少该元数据，`npm run build` 会直接失败并阻塞发布。
+
+### 位置
+- 插件文件：`plugins/check-sidebar-can-share.js`
+- 挂载位置：`docusaurus.config.ts`

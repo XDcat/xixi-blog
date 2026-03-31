@@ -2,6 +2,8 @@ import {themes as prismThemes} from 'prism-react-renderer';
 import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
+const checkSidebarCanSharePlugin = require('./plugins/check-sidebar-can-share');
+
 const config: Config = {
   title: '臭喜喜的笔记本',
   tagline: '写给自己，也写给未来的你。',
@@ -49,6 +51,7 @@ const config: Config = {
       } satisfies Preset.Options,
     ],
   ],
+  plugins: [checkSidebarCanSharePlugin],
   themeConfig: {
     image: 'img/social-card.png',
     colorMode: {
