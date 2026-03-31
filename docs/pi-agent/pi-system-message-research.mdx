@@ -1,0 +1,593 @@
+> 以下内容由 pi agent 生成
+>  Share URL: https://pi.dev/session/#401a936a4291cdc429de3a561f625dd0                                                            
+> Gist: https://gist.github.com/XDcat/401a936a4291cdc429de3a561f625dd0  
+
+# 从源码看 pi agent 的 system message 是怎么拼出来的
+
+## 先说结论
+pi agent 的 system message 不是一段固定字符串，而是一条分层构建链。最上层是资源和配置输入，中间层是 session 的重建逻辑，底层才是最终的字符串拼接与 provider 映射。
+
+换句话说：你要找的不是“一个 system prompt 在哪”，而是“它是怎么被一步步拼出来的”。
+
+## 一、system message 的来源有哪些
+
+### 1. 显式传入 / CLI 覆盖
+`packages/coding-agent/src/main.ts` 会把命令行参数传给 `DefaultResourceLoader`，包括：
+- `systemPrompt`
+- `appendSystemPrompt`
+- 额外 skills / prompts / themes / extensions
+
+`DefaultResourceLoader` 还支持 override 回调，所以上层可以直接替换加载结果。
+
+### 2. 本地文件
+`packages/coding-agent/src/core/resource-loader.ts` 会发现并读取这些文件：
+- 项目 `.pi/` 目录下的 `SYSTEM.md`
+- 项目 `.pi/` 目录下的 `APPEND_SYSTEM.md`
+- agent 目录下的 `SYSTEM.md`
+- agent 目录下的 `APPEND_SYSTEM.md`
+
+⚠️ 注意：源码中通过 `join(this.cwd, CONFIG_DIR_NAME, "SYSTEM.md")` 查找文件，因此项目级 system prompt 实际位于 `.pi/` 目录，而不是项目根目录。
+
+此外，它还会向上遍历当前工作目录祖先目录，加载：
+- `AGENTS.md`
+- `CLAUDE.md`
+
+这些内容会作为 project context 进入最终 prompt。
+
+### 3. 技能、模板、主题、扩展
+资源加载器还会加载：
+- skills
+- prompt templates
+- themes
+- extensions
+
+其中 skills 会被格式化成 `<available_skills>` 区块，直接写进 system prompt。
+
+### 4. 内置字符串
+真正的 prompt 骨架来自 `packages/coding-agent/src/core/system-prompt.ts`，包括：
+- 固定身份句子
+- tools / guidelines
+- Pi 文档引用块
+- project context 块
+- skills 块
+- 当前日期和 cwd
+
+## 二、自顶向下的构建链路
+
+### 第一步：启动时加载资源
+入口在 `packages/coding-agent/src/main.ts`。
+
+关键代码（真实源码片段）：
+
+```ts
+// main.ts
+const resourceLoader = new DefaultResourceLoader({
+  cwd,
+  agentDir,
+  settingsManager,
+  additionalExtensionPaths: firstPass.extensions,
+  additionalSkillPaths: firstPass.skills,
+  additionalPromptTemplatePaths: firstPass.promptTemplates,
+  additionalThemePaths: firstPass.themes,
+  noExtensions: firstPass.noExtensions,
+  noSkills: firstPass.noSkills,
+  noPromptTemplates: firstPass.noPromptTemplates,
+  noThemes: firstPass.noThemes,
+  systemPrompt: firstPass.systemPrompt,
+  appendSystemPrompt: firstPass.appendSystemPrompt,
+});
+
+await resourceLoader.reload();
+```
+
+这里可以看到：
+- CLI 参数直接传入 DefaultResourceLoader
+- reload() 是所有资源扫描的起点
+
+它会：
+- 创建 `DefaultResourceLoader`
+- 注入 cwd、agentDir、CLI 参数
+- 调用 `resourceLoader.reload()`
+
+这一层负责把外部材料都准备好。
+
+### 第二步：资源加载器收集所有输入
+`packages/coding-agent/src/core/resource-loader.ts` 负责：
+
+核心逻辑片段（真实源码结构）：
+
+```ts
+// resource-loader.ts (reload 末尾关键逻辑)
+const baseSystemPrompt = resolvePromptInput(
+  this.systemPromptSource ?? this.discoverSystemPromptFile(),
+  "system prompt",
+);
+this.systemPrompt = this.systemPromptOverride
+  ? this.systemPromptOverride(baseSystemPrompt)
+  : baseSystemPrompt;
+
+const appendSource =
+  this.appendSystemPromptSource ?? this.discoverAppendSystemPromptFile();
+const resolvedAppend = resolvePromptInput(
+  appendSource,
+  "append system prompt",
+);
+const baseAppend = resolvedAppend ? [resolvedAppend] : [];
+this.appendSystemPrompt = this.appendSystemPromptOverride
+  ? this.appendSystemPromptOverride(baseAppend)
+  : baseAppend;
+```
+
+其中 `discoverSystemPromptFile()` 实现为：
+
+```ts
+private discoverSystemPromptFile(): string | undefined {
+  const projectPath = join(this.cwd, CONFIG_DIR_NAME, "SYSTEM.md");
+  if (existsSync(projectPath)) return projectPath;
+
+  const globalPath = join(this.agentDir, "SYSTEM.md");
+  if (existsSync(globalPath)) return globalPath;
+
+  return undefined;
+}
+```
+
+可以看到真实优先级为：
+1. CLI 传入的 `--system-prompt`
+2. 项目 `.pi/SYSTEM.md`
+3. agentDir 下的 `SYSTEM.md`
+4. 最终还可以被 `systemPromptOverride` 钩子修改
+
+⚠️ 另一个重要细节：
+- `appendSystemPrompt` 在 loader 内部是 `string[]`
+- 即使只有一个文件，也会被包装成数组
+- 真正的 `join("\n\n")` 操作是在 AgentSession 中完成
+
+`packages/coding-agent/src/core/resource-loader.ts` 负责：
+- 找 `SYSTEM.md` / `APPEND_SYSTEM.md`
+- 找 `AGENTS.md` / `CLAUDE.md`
+- 加载 skills、prompts、themes
+- 收集扩展资源
+- 生成 `agentsFiles`
+
+它本身不拼 prompt，只负责整理材料。
+
+### 第三步：AgentSession 决定当前轮用什么材料
+`packages/coding-agent/src/core/agent-session.ts` 里的 `_rebuildSystemPrompt()` 会把：
+
+核心代码（真实源码片段）：
+
+```ts
+// agent-session.ts
+private _rebuildSystemPrompt(toolNames: string[]): string {
+  const validToolNames = toolNames.filter((name) =>
+    this._toolRegistry.has(name),
+  );
+
+  const toolSnippets: Record<string, string> = {};
+  const promptGuidelines: string[] = [];
+
+  for (const name of validToolNames) {
+    const snippet = this._toolPromptSnippets.get(name);
+    if (snippet) {
+      toolSnippets[name] = snippet;
+    }
+
+    const toolGuidelines = this._toolPromptGuidelines.get(name);
+    if (toolGuidelines) {
+      promptGuidelines.push(...toolGuidelines);
+    }
+  }
+
+  const loaderSystemPrompt = this._resourceLoader.getSystemPrompt();
+  const loaderAppendSystemPrompt =
+    this._resourceLoader.getAppendSystemPrompt();
+  const appendSystemPrompt =
+    loaderAppendSystemPrompt.length > 0
+      ? loaderAppendSystemPrompt.join("\n\n")
+      : undefined;
+
+  const loadedSkills = this._resourceLoader.getSkills().skills;
+  const loadedContextFiles =
+    this._resourceLoader.getAgentsFiles().agentsFiles;
+
+  return buildSystemPrompt({
+    cwd: this._cwd,
+    skills: loadedSkills,
+    contextFiles: loadedContextFiles,
+    customPrompt: loaderSystemPrompt,
+    appendSystemPrompt,
+    selectedTools: validToolNames,
+    toolSnippets,
+    promptGuidelines,
+  });
+}
+```
+
+注意：
+- 工具不仅通过 `agent.setTools()` 生效，还会影响 system prompt 文本
+- `appendSystemPrompt` 在这里才被 `join("\n\n")`
+- 只要工具集合变化（如 `setActiveToolsByName()`），就会重建 base system prompt
+
+`packages/coding-agent/src/core/agent-session.ts` 里的 `_rebuildSystemPrompt()` 会把：
+- loader 的 system prompt
+- loader 的 append prompt
+- skills
+- agentsFiles / project context
+- 当前激活工具的 snippets 和 guidelines
+
+统一交给 `buildSystemPrompt()`。
+
+这里最值得注意的一点是：工具集变化会触发 prompt 重建，所以 tools 也是 system message 的一部分。
+
+### 第四步：真正拼接字符串
+`packages/coding-agent/src/core/system-prompt.ts` 的 `buildSystemPrompt()` 负责最终拼装。
+
+关键代码结构（真实源码片段，保留核心分支）：
+
+```ts
+export function buildSystemPrompt(options: BuildSystemPromptOptions = {}): string {
+  const {
+    customPrompt,
+    selectedTools,
+    toolSnippets,
+    promptGuidelines,
+    appendSystemPrompt,
+    cwd,
+    contextFiles: providedContextFiles,
+    skills: providedSkills,
+  } = options;
+
+  const date = new Date().toISOString().slice(0, 10);
+  const resolvedCwd = cwd ?? process.cwd();
+
+  // ✅ 分支一：存在 customPrompt（来自 SYSTEM.md 或 CLI）
+  if (customPrompt) {
+    let prompt = customPrompt;
+
+    if (appendSystemPrompt) {
+      prompt += `\n\n${appendSystemPrompt}`;
+    }
+
+    if (providedContextFiles?.length) {
+      prompt += "\n\n# Project Context\n\n";
+      for (const { path, content } of providedContextFiles) {
+        prompt += `## ${path}\n\n${content}\n\n`;
+      }
+    }
+
+    const hasRead = !selectedTools || selectedTools.includes("read");
+    if (hasRead && providedSkills?.length) {
+      prompt += formatSkillsForPrompt(providedSkills);
+    }
+
+    prompt += `\nCurrent date: ${date}`;
+    prompt += `\nCurrent working directory: ${resolvedCwd}`;
+
+    return prompt;
+  }
+
+  // ✅ 分支二：使用内置默认模板（部分省略）
+  const tools = selectedTools || ["read", "bash", "edit", "write"];
+  const visibleTools = tools.filter((name) => !!toolSnippets?.[name]);
+
+  // 只有有 snippet 的工具才会出现在 Available tools 中
+  const toolsList =
+    visibleTools.length > 0
+      ? visibleTools.map((name) => `- ${name}: ${toolSnippets![name]}`).join("\n")
+      : "(none)";
+
+  // 根据可用工具动态生成 guidelines（部分省略）
+
+  let prompt = `You are an expert coding assistant operating inside pi...`;
+
+  if (appendSystemPrompt) {
+    prompt += `\n\n${appendSystemPrompt}`;
+  }
+
+  if (providedContextFiles?.length) {
+    prompt += "\n\n# Project Context\n\n";
+    for (const { path, content } of providedContextFiles) {
+      prompt += `## ${path}\n\n${content}\n\n`;
+    }
+  }
+
+  const hasRead = tools.includes("read");
+  if (hasRead && providedSkills?.length) {
+    prompt += formatSkillsForPrompt(providedSkills);
+  }
+
+  prompt += `\nCurrent date: ${date}`;
+  prompt += `\nCurrent working directory: ${resolvedCwd}`;
+
+  return prompt;
+}
+```
+
+关键结论：
+- ✅ 有 `SYSTEM.md` 时不会使用默认模板
+- ✅ 但仍然会追加 append / Project Context / Skills / 日期 / cwd
+- ✅ skills 只有在 `read` 工具可用时才会加入
+- ✅ 工具只有在存在 snippet 时才会对模型“可见”
+- ✅ guidelines 会根据工具集合动态生成，并强制追加固定规则
+
+
+### 第五步：送进 provider
+最终 `context.systemPrompt` 会进入 `packages/ai/src/providers/*`。
+
+例如 OpenAI provider（简化）：
+
+```ts
+// openai.ts
+const response = await client.responses.create({
+  model,
+  instructions: context.systemPrompt,
+  input: messages,
+})
+```
+
+Anthropic：
+
+```ts
+// anthropic.ts
+client.messages.create({
+  system: context.systemPrompt,
+  messages,
+})
+```
+
+可以看到 provider 层只做字段映射，不修改语义。
+
+不同 provider 对同一份 prompt 的落点不同：
+- Google：`systemInstruction`
+- Anthropic：`params.system`
+- Mistral：`messages` 里的 `system` role
+- OpenAI Responses / Codex Responses：`instructions`
+
+所以“system message”在内部是统一概念，在外部 API 中却是不同字段。
+## 三、哪些本地文件真的参与了构造
+
+核心清单如下：
+
+- `SYSTEM.md`
+- `APPEND_SYSTEM.md`
+- `AGENTS.md`
+- `CLAUDE.md`
+- skills 目录下的 `SKILL.md`
+- prompt templates
+- extensions 提供的资源
+- 当前工作目录和日期
+
+其中 `AGENTS.md` / `CLAUDE.md` 更像项目上下文，而不是纯粹替代 system prompt 的文件。
+
+## 四、优先级怎么理解
+
+可以粗略理解为：
+
+1. 显式传入 / CLI / override
+2. project-local 文件
+3. global agent-dir 文件
+4. `buildSystemPrompt()` 内置模板
+5. 扩展运行时对 prompt 的局部修改
+6. provider 适配层的字段映射
+
+也就是说，输入优先级高于模板，而模板高于 provider 适配。
+
+### 这一层优先级在源码里怎么落地
+- `resource-loader.ts` 先决定哪些文件被读进来
+- `agent-session.ts` 再决定当前轮用哪些资源参与构建
+- `system-prompt.ts` 只负责把最终材料按固定顺序拼接
+- provider 层不再改语义，只改传输格式
+
+所以如果你在排查某段 prompt “为什么出现/为什么没出现”，最先看的不是 provider，而是 loader 和 session。
+## 五、几个容易忽略的细节
+
+### 1. skills 不是全量展示
+`formatSkillsForPrompt()` 会过滤掉 `disableModelInvocation=true` 的 skill。
+
+对应源码（简化）：
+
+```ts
+export function formatSkillsForPrompt(skills: Skill[]) {
+  return skills
+    .filter(s => !s.disableModelInvocation)
+    .map(s => renderSkill(s))
+    .join("\n")
+}
+```
+
+这类 skill 不会出现在模型可见的技能列表里，只能通过显式命令调用。
+
+### 2. system prompt 会因工具集变化而重建
+`setActiveToolsByName()` 会重新构建 base system prompt。
+
+这表示工具说明和 system prompt 是绑定的，不是独立信息。
+
+### 3. 扩展能做的是“本轮修改”
+扩展 runner 可以在 turn 级别修改 system prompt，但 session 会在必要时恢复 base prompt。
+
+所以扩展更像是临时注入，而不是永久污染。
+
+### 4. `SYSTEM.md` / `APPEND_SYSTEM.md` 并不是硬编码唯一来源
+`resolvePromptInput()` 允许把“路径”或“直接文本”都当作输入，所以外部传参的优先级其实很高。
+## 六、system message 的组成、来源与实践建议
+
+在谈最佳实践之前，我们先把 system message 拆开讲清楚：**它到底由哪些部分构成，以及每一部分来自哪里。**
+
+### 1️⃣ system message 的结构组成（按拼接顺序）
+
+根据 `buildSystemPrompt()` 的真实实现，最终的 system message 由以下几部分组成：
+
+1. **基础模板或自定义 SYSTEM.md（必有其一）**
+   - 来源：
+     - CLI `--system-prompt`
+     - 项目 `.pi/SYSTEM.md`
+     - agentDir 下的 `SYSTEM.md`
+   - 规则：三选一（按优先级覆盖），不会叠加多个 SYSTEM.md。
+
+2. **APPEND_SYSTEM.md（可选）**
+   - 来源：
+     - CLI `--append-system-prompt`
+     - 项目 `.pi/APPEND_SYSTEM.md`
+     - agentDir 下的 `APPEND_SYSTEM.md`
+   - 规则：只会选择一个来源，但在 AgentSession 中会被追加到主 prompt 之后。
+
+3. **Project Context（AGENTS.md / CLAUDE.md）**
+   - 来源：
+     - agentDir 下的 `AGENTS.md` / `CLAUDE.md`
+     - 当前工作目录及其所有祖先目录中的 `AGENTS.md` / `CLAUDE.md`
+   - 规则：
+     - 可能加载多个文件
+     - 会全部拼接进 `# Project Context` 区块
+     - 不互相覆盖，而是按目录层级顺序叠加
+
+4. **Skills 区块**
+   - 来源：
+     - resource-loader 加载的所有启用 skill
+     - 具体文件通常是 `SKILL.md`
+   - 规则：
+     - 会加载多个 skill
+     - 过滤 `disableModelInvocation=true`
+     - 只有在 `read` 工具启用时才会加入 system prompt
+
+5. **工具说明（Available tools + Guidelines）**
+   - 来源：
+     - 当前激活的工具集合
+     - 每个工具的 snippet 与 guideline
+   - 规则：
+     - 只有存在 snippet 的工具才会出现在“Available tools”列表
+     - guideline 会根据工具动态生成
+     - 始终会追加固定 guideline（如“Be concise…”）
+
+6. **运行时信息**
+   - 当前日期
+   - 当前工作目录
+   - 始终追加在最后
+
+---
+
+### 2️⃣ 哪些是“选择一个”，哪些是“全部叠加”？
+
+| 部分 | 来源数量 | 叠加方式 |
+|------|----------|----------|
+| SYSTEM.md | 多选一 | 按优先级覆盖 |
+| APPEND_SYSTEM.md | 多选一 | 追加一次 |
+| AGENTS.md / CLAUDE.md | 可多个 | 全部叠加 |
+| Skills | 可多个 | 全部叠加（有过滤） |
+| Tool snippets | 可多个 | 按 active tools 选择 |
+| 固定模板 | 仅在无 SYSTEM.md 时启用 | 单一模板 |
+
+理解这一点非常重要：
+
+> SYSTEM.md 是“替换底稿”，而 AGENTS.md / Skills 是“附加区块”。
+
+---
+
+### 3️⃣ 基于源码结构的实践建议
+
+在理解构造顺序之后，实践策略就变得非常清晰：
+
+#### ✅ 1. 把“身份与长期规则”放在 SYSTEM.md
+
+路径：
+```
+项目/.pi/SYSTEM.md
+```
+
+适合放：
+- 角色设定
+- 代码风格约束
+- 永久性的团队规范
+
+因为它会成为整个 prompt 的“底稿”。
+
+---
+
+#### ✅ 2. 把“补充规则”放在 APPEND_SYSTEM.md
+
+适合放：
+- 临时强化规则
+- 某阶段特殊说明
+- 不想修改主 SYSTEM.md 的附加约束
+
+它总是拼接在 SYSTEM.md 或默认模板之后。
+
+---
+
+#### ✅ 3. 把“项目背景知识”放在 AGENTS.md / CLAUDE.md
+
+这些文件会：
+- 自动向上遍历加载
+- 全部叠加
+- 明确出现在 `# Project Context` 区块
+
+适合放：
+- 项目结构说明
+- 架构背景
+- 依赖说明
+- 构建流程
+
+它们不会覆盖 SYSTEM.md，而是作为上下文补充。
+
+---
+
+#### ✅ 4. 把“可复用任务流程”做成 Skill
+
+原因：
+- Skill 是结构化的
+- 可以被显式调用
+- 不会污染主 system prompt
+- 可按需启用
+
+不要把大量流程步骤直接写进 SYSTEM.md。
+
+---
+
+#### ✅ 5. 谨慎使用工具 snippet
+
+因为：
+- snippet 决定工具是否对模型“可见”
+- 过长的 snippet 会膨胀 system prompt
+- guideline 会根据工具自动生成
+
+建议：
+- snippet 保持一行
+- 只暴露必要工具
+
+---
+
+#### ✅ 6. 扩展修改 system prompt 时要清楚作用域
+
+扩展可以在单轮覆盖 system prompt：
+
+```ts
+agent.setSystemPrompt(result.systemPrompt)
+```
+
+但不会改变 `_baseSystemPrompt`。
+
+因此要区分：
+- ✅ 本轮增强
+- ❌ 永久规则修改
+
+---
+
+## 小结
+
+从源码角度看，system message 是一个：
+
+> “底稿 + 追加块 + 上下文块 + 技能块 + 工具块 + 运行时信息” 的线性拼接结构。
+
+理解每一块的来源与叠加规则，比记住某个文件路径更重要。
+
+## 七、总结
+
+pi agent 的 system message 构造方式可以概括成一句话：
+
+**资源加载器负责收集材料，AgentSession 负责决定哪些材料参与当前轮，buildSystemPrompt 负责拼字符串，provider adapter 负责把字符串塞进不同 API。**
+
+这套设计的优点是分层清晰、易覆盖、可扩展，也能兼容不同模型厂商的接口差异。
+
+如果只记一句源码结论，那就是：
+
+**system message 的“内容来源”和“最终投递格式”是两条不同的链，排查问题时要先看来源，再看拼接，最后看 provider。**

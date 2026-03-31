@@ -18,6 +18,14 @@ const sidebars: SidebarsConfig = {
       label: '参考文档',
       items: ['guid/docusaurus-mdx-syntax'],
     },
+    {
+      type: 'category',
+      label: 'Pi Agent 源码专题',
+      items: [
+        'pi-agent/pi-session-management',
+        'pi-agent/system-message-deep-dive',
+      ],
+    },
   ],
 };
 

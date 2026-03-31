@@ -1,0 +1,427 @@
+---
+title: Pi Agent System Message 构造全解析
+sidebar_label: System Message 构造机制
+---
+
+# Pi Agent System Message 构造全解析
+
+:::tip
+本文基于官方源码仓库：https://github.com/badlogic/pi-mono/tree/main
+
+
+借助 Pi Agent 分析，session：
+* Share URL: https://pi.dev/session/#cfa96a9699b62aa59b267f482b049b64
+* Gist: https://gist.github.com/XDcat/cfa96a9699b62aa59b267f482b049b64
+
+本文初版由 AI 生成，由人工编辑优化。
+
+:::
+
+# 一、System Message 总览
+
+当前版本中，最终发送给模型的 `system` message 由以下部分构成：
+
+```
+[1] Base System
+    - CLI --system-prompt {arg}
+    - {repo}/.pi/SYSTEM.md
+    - ~/.pi/agent/SYSTEM.md
+    - DEFAULT_SYSTEM_PROMPT
+
+[2] APPEND_SYSTEM.md
+
+[3] AGENTS.md / CLAUDE.md, concat
+    - global
+    - 父目录（从 root 到 cwd）
+
+[4] CLI --append-system-prompt
+
+[5] Runtime 注入（Skills）
+```
+
+## ✅ 最终优先级（从高到低）
+
+| 优先级 | 来源 |
+|--------|------|
+| 最高 | CLI `--system-prompt` |
+| ↑ | CLI `--append-system-prompt` |
+| ↑ | AGENTS.md（越靠近 cwd 越高） |
+| ↑ | APPEND_SYSTEM.md |
+| ↑ | SYSTEM.md（project > global） |
+| 最低 | DEFAULT_SYSTEM_PROMPT |
+
+---
+
+# 二、自顶向下源码调用链分析
+
+---
+
+# 1️⃣ Runtime 层：System 如何进入模型？
+
+📍 文件路径：
+
+```
+packages/agent/src/runtime/runtime.ts
+```
+
+核心代码：
+
+```ts
+const messages = [
+  { role: "system", content: agent.systemPrompt },
+  ...conversationMessages
+];
+```
+
+✅ 结论：
+
+- runtime 不构造 system
+- 只消费 `agent.systemPrompt`
+- system 永远是 messages[0]
+
+---
+
+# 2️⃣ agent.systemPrompt 的来源
+
+📍 文件路径：
+
+```
+packages/coding-agent/src/core/agent-builder.ts
+```
+
+在 AgentBuilder 中完成拼接。
+
+---
+
+# 3️⃣ AgentBuilder 中的 System 构造逻辑
+
+核心结构（简化还原）：
+
+ ```ts
+   // 1. 决定 base system
+   const baseSystem = systemFile
+     ? await fs.readFile(systemFile, "utf8")
+     : DEFAULT_SYSTEM_PROMPT;
+
+   // 2. 初始化数组
+   let systemParts = [baseSystem];
+
+   // 3. APPEND_SYSTEM.md
+   if (appendSystemFile) {
+     const appendContent = await fs.readFile(appendSystemFile, "utf8");
+     systemParts.push(appendContent);
+   }
+
+   // 4. AGENTS.md
+   for (const agentsFile of agentsFiles) {
+     const content = await fs.readFile(agentsFile, "utf8");
+     systemParts.push(content);
+   }
+
+   // 5. CLI override
+   if (cliOptions.systemPrompt) {
+     systemParts = [cliOptions.systemPrompt];
+   }
+
+   // 6. CLI append
+   if (cliOptions.appendSystemPrompt) {
+     systemParts.push(cliOptions.appendSystemPrompt);
+   }
+
+   const finalSystem = systemParts.join("\n\n");
+ ```
+
+
+---
+
+## ✅ 关键机制说明
+
+### ✅ Base System 决定逻辑
+
+```
+CLI --system-prompt
+    >
+.pi/SYSTEM.md
+    >
+~/.pi/agent/SYSTEM.md
+    >
+DEFAULT_SYSTEM_PROMPT
+```
+
+---
+
+### ✅ CLI override 的真实行为
+
+```ts
+parts.length = 0;
+```
+
+⚠️ 这会清空之前所有内容，包括：
+
+- SYSTEM.md
+- APPEND_SYSTEM.md
+- AGENTS.md
+
+这是一个“完全替换”行为。
+
+---
+
+# 4️⃣ ResourceLoader：文件发现机制
+
+📍 文件路径：
+
+```
+packages/coding-agent/src/core/resource-loader.ts
+```
+
+---
+
+# 4.1 SYSTEM.md 发现逻辑
+
+```ts
+private discoverSystemPromptFile(): string | undefined {
+  const projectPath = join(this.cwd, CONFIG_DIR_NAME, "SYSTEM.md");
+  if (existsSync(projectPath)) {
+    return projectPath;
+  }
+
+  const globalPath = join(this.agentDir, "SYSTEM.md");
+  if (existsSync(globalPath)) {
+    return globalPath;
+  }
+
+  return undefined;
+}
+```
+
+✅ project 优先
+✅ 只返回一个
+
+---
+
+# 4.2 APPEND_SYSTEM.md
+
+```ts
+private discoverAppendSystemPromptFile(): string | undefined {
+  const projectPath = join(this.cwd, CONFIG_DIR_NAME, "APPEND_SYSTEM.md");
+  if (existsSync(projectPath)) {
+    return projectPath;
+  }
+
+  const globalPath = join(this.agentDir, "APPEND_SYSTEM.md");
+  if (existsSync(globalPath)) {
+    return globalPath;
+  }
+
+  return undefined;
+}
+```
+
+✅ 只会选择一个文件
+
+---
+
+# 4.3 AGENTS.md 真实递归逻辑
+
+## ✅ 单目录读取函数
+
+```ts
+function loadContextFileFromDir(dir: string) {
+  const candidates = ["AGENTS.md", "CLAUDE.md"];
+}
+```
+
+---
+
+## ✅ 向上遍历核心代码
+
+```ts
+function loadProjectContextFiles(...) {
+  const globalContext = loadContextFileFromDir(resolvedAgentDir);
+
+  let currentDir = resolvedCwd;
+  const root = resolve("/");
+
+  while (true) {
+    const contextFile = loadContextFileFromDir(currentDir);
+    if (contextFile) {
+      ancestorContextFiles.unshift(contextFile);
+    }
+
+    if (currentDir === root) break;
+
+    currentDir = resolve(currentDir, "..");
+  }
+
+  contextFiles.push(...ancestorContextFiles);
+}
+```
+
+---
+
+## ✅ 顺序保证机制
+
+使用 `unshift()`：
+
+- root 在前
+- cwd 在后
+- 越靠近 cwd 优先级越高
+
+---
+
+# 三、深入机制解析
+
+---
+
+# 1️⃣ CLI 参数是如何进入构造链路的？
+
+在 DefaultResourceLoader 构造函数中：
+
+```ts
+this.systemPromptSource = options.systemPrompt;
+this.appendSystemPromptSource = options.appendSystemPrompt;
+```
+
+然后在 reload() 中：
+
+```ts
+const baseSystemPrompt = resolvePromptInput(
+  this.systemPromptSource ?? this.discoverSystemPromptFile(),
+  "system prompt",
+);
+```
+
+✅ CLI 参数优先于文件发现
+
+---
+
+# 2️⃣ resolvePromptInput 的作用
+
+```ts
+function resolvePromptInput(input: string | undefined, description: string)
+```
+
+逻辑：
+
+- 如果是文件路径 → 读取文件
+- 如果不是文件 → 直接作为字符串
+
+✅ CLI 既可以传文件路径，也可以直接传字符串
+
+---
+
+# 3️⃣ Skills 如何注入 system？
+
+Skills 不参与初始构造。
+
+📍 runtime 注入位置：
+
+```
+packages/coding-agent/src/core/skill-runner.ts
+```
+
+运行时通过类似：
+
+```ts
+runtime.injectSystemMessage(skillContent);
+```
+
+这会在对话中插入一个新的 system role message。
+
+✅ 它不会修改 base systemPrompt
+✅ 而是新增一个 system message
+
+---
+
+# 4️⃣ DEFAULT_SYSTEM_PROMPT 来源
+
+📍 文件路径：
+
+```
+packages/coding-agent/src/core/default-system-prompt.ts
+```
+
+只有当没有 SYSTEM.md 时才使用。
+
+---
+
+# 四、完整时序流程图
+
+```
+CLI 启动
+   ↓
+DefaultResourceLoader.reload()
+   ↓
+  - 发现 SYSTEM.md
+  - 发现 APPEND_SYSTEM.md
+  - loadProjectContextFiles()
+   ↓
+AgentBuilder 构造 systemPrompt
+   ↓
+AgentRuntime 构造 messages[]
+   ↓
+Model 调用
+```
+
+---
+
+# 五、最佳实践指南
+
+---
+
+## ✅ 1️⃣ 分层组织 prompt
+
+推荐结构：
+
+```
+~/.pi/agent/AGENTS.md        ← 全局规范
+repo/AGENTS.md               ← 项目规范
+repo/.pi/SYSTEM.md           ← 项目级 system 行为
+```
+
+---
+
+## ✅ 2️⃣ 不要滥用 CLI --system-prompt
+
+因为它会清空：
+
+- SYSTEM.md
+- APPEND_SYSTEM.md
+- AGENTS.md
+
+推荐使用：
+
+```
+--append-system-prompt
+```
+
+---
+
+## ✅ 3️⃣ 企业环境建议
+
+- SYSTEM.md 定义“人格与工具规则”
+- AGENTS.md 定义“项目语义规则”
+
+保持分层。
+
+---
+
+# 六、最终总结
+
+Pi Agent 的 system message 机制本质是：
+
+✅ 分层字符串拼接
+✅ 向上递归加载
+✅ CLI 最高优先级
+✅ Runtime 可动态插入 system
+✅ 无 AST 合并
+✅ 无复杂优先级树
+
+核心文件：
+
+```
+packages/agent/src/runtime/runtime.ts
+packages/coding-agent/src/core/agent-builder.ts
+packages/coding-agent/src/core/resource-loader.ts
+packages/coding-agent/src/core/default-system-prompt.ts
+```
