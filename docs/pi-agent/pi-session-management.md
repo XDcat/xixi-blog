@@ -1,183 +1,160 @@
 ---
+title: 深入理解 pi 的会话管理机制：/tree、/fork、/resume 全解析
+sidebar_position: 1
 canShare: true
+pi_session_share_url: https://pi.dev/session/#cb8ed97bc2a3bc419b8d2043ec3d4159
 ---
 
 # 深入理解 pi 的会话管理机制：/tree、/fork、/resume 全解析
 
-:::note
-pi session
-Share URL: https://pi.dev/session/#cb8ed97bc2a3bc419b8d2043ec3d4159
-Gist: https://gist.github.com/XDcat/cb8ed97bc2a3bc419b8d2043ec3d4159
+> 本文基于 pi 官方 README 与源码结构整理，用来总结 pi 的会话管理机制与设计哲学。
 
-:::
+## 一、先给结论：pi 没有“回滚”，只有“分叉”
 
-> 本文基于 pi 官方 README 与源码结构整理，总结 pi 的会话管理机制与设计哲学。
-
----
-
-# 一、pi 为什么没有“回滚”？
-
-在很多 AI 工具中，如果你回到历史消息继续对话，后面的内容会被删除。
+在很多 AI 工具里，如果你回到历史消息继续对话，后面的内容会被删除。
 
 但 **pi 不会删除历史**。
 
-原因是：
-
-> pi 的 session 不是线性数组，而是一棵树（tree structure）。
+原因很简单：pi 的 session 不是线性数组，而是一棵树（tree structure）。
 
 每条消息都有：
 
 - `id`
 - `parentId`
 
-所有消息形成一棵不可变历史树。
+所有消息共同组成一棵不可变的历史树。
 
-所谓“回滚”，本质上只是：
+所以，所谓“回滚”，本质上只是：
 
-> 把当前指针移动到历史某个节点，然后从那里继续分叉。
+> 把当前指针移动到历史中的某个节点，然后从那里继续分叉。
 
----
+## 二、Session 的底层结构
 
-# 二、Session 的底层结构
-
-## 1️⃣ 文件层
+### 2.1 文件层：session 以 `.jsonl` 文件保存
 
 所有 session 存储在：
 
-```
+```bash
 ~/.pi/agent/sessions/
 ```
 
-按工作目录分文件夹。
+目录通常会按工作目录划分。
 
-每个 session 是一个：
+每个 session 对应一个 `.jsonl` 文件，也就是“每行一个 JSON 记录”。
 
-```
-.jsonl 文件
-```
+### 2.2 树结构层：一个文件里也能分叉
 
-JSONL = 每行一个 JSON 记录。
+一个 session 文件内部的消息链，大致可以理解为：
 
----
-
-## 2️⃣ 树结构层
-
-一个 session 文件内部结构类似：
-
-```
+```text
 a → b → c → d → e → f → g
 ```
 
-如果在 e 使用 `/tree` 继续：
+如果在 `e` 上使用 `/tree` 继续，就会变成：
 
-```
+```text
 a → b → c → d → e
                   ├─ f → g
                   └─ new_f → new_g
 ```
 
-历史永远不会删除。
+历史不会被删除，只会新增分支。
 
----
-
-## 3️⃣ 当前指针（Active Node）
+### 2.3 当前指针：Active Node
 
 pi 会记录当前所在节点。
 
-- `/tree` 改变当前节点
-- 新消息会以当前节点为 parent
+- `/tree` 会改变当前节点
+- 新消息会以当前节点作为 `parent`
 
----
+这也是为什么同一个 session 里可以不断“改路”，但历史仍然保留。
 
-# 三、核心命令解析
+## 三、核心命令怎么理解
 
-## ✅ /tree —— 树内切换
+### 3.1 `/tree`：在当前 session 内切换节点
 
-作用层级：单个 session 内部。
+作用范围：单个 session 内部。
 
-功能：
+它可以：
 
-- 跳转到历史任意节点
+- 跳转到历史中的任意节点
 - 在该节点继续对话
-- 产生新的分支
+- 生成新的分支
 
-本质：
+你可以把它理解成：
 
-```
+```text
 currentNode = selectedNode
 ```
 
-✅ 不创建新文件
-✅ 不删除历史
+它不会：
 
----
+- 创建新文件
+- 删除历史
 
-## ✅ /fork —— 复制为新 session
+### 3.2 `/fork`：复制出一个新的 session
 
-作用层级：文件层。
+作用范围：文件层。
 
-功能：
+它可以：
 
-- 复制当前 session（或某节点之前的历史）
-- 创建一个新的 session 文件
-- 在新文件中继续
+- 复制当前 session，或复制某个节点之前的历史
+- 生成一个新的 session 文件
+- 在新文件中继续对话
 
-本质：
+你可以把它理解成：
 
-```
+```text
 newSessionFile = copy(oldSession up to node X)
 ```
 
-✅ 创建新文件
-✅ 原文件不受影响
+它会：
 
----
+- 创建新文件
+- 保持原文件不变
 
-## ✅ /resume —— 切换 session 文件
+### 3.3 `/resume`：切换到另一个 session 文件
 
-作用层级：文件层。
+作用范围：文件层。
 
-功能：
+它的功能很直接：在已有的 session 文件之间切换。
 
-- 在所有已有 session 文件之间切换
+你可以把它理解成：
 
-本质：
-
-```
+```text
 currentSessionFile = selectedFile
 ```
 
-✅ 不改变树结构
-✅ 不创建分支
+它不会：
 
-⚠️ `/resume` 不依赖 `/fork`。
-它只是打开一个已有的 session 文件。
+- 改变树结构
+- 创建分支
 
----
+> 注意：`/resume` 不依赖 `/fork`。它只是打开一个已有的 session 文件。
 
-## ✅ /new —— 创建全新空 session
+### 3.4 `/new`：创建一个全新的空 session
 
-作用层级：文件层。
+作用范围：文件层。
 
-功能：
+它的作用就是创建一个新的空 session，没有历史包袱。
 
-- 创建一个新的空 session
+## 四、pi 的会话系统是三层结构
 
----
+可以把它概括成：
 
-# 四、完整会话管理体系
-
-pi 的会话系统是三层结构：
-
-```
+```text
 Session Files
     └── Tree Structure
             └── Active Node
 ```
 
----
+也就是说：
 
-## 文件层操作
+- 文件层决定“你在用哪个 session 文件”
+- 树层决定“你在这个 session 里的哪个分支上”
+- 当前指针决定“下一条消息接到哪里”
+
+### 4.1 文件层操作
 
 - `/new`
 - `/fork`
@@ -187,32 +164,24 @@ Session Files
 - `--session`
 - `--fork`
 
----
-
-## 树层操作
+### 4.2 树层操作
 
 - `/tree`
 - `/compact`
 
----
-
-## 元数据操作
+### 4.3 元数据操作
 
 - `/name`
 - `/session`
 
----
-
-## 导出类
+### 4.4 导出类操作
 
 - `/export`
 - `/share`
 
----
+## 五、一个更直观的理解模型
 
-# 五、核心理解模型
-
-```
+```text
 /new      = 创建宇宙
 /fork     = 复制宇宙
 /resume   = 切换宇宙
@@ -220,24 +189,30 @@ Session Files
 /compact  = 压缩宇宙记忆
 ```
 
----
+这个比喻虽然夸张，但很好用：
 
-# 六、设计哲学总结
+- `new` 是从零开始
+- `fork` 是复制一份平行版本
+- `resume` 是切换到另一个已存在的版本
+- `tree` 是在同一个版本里回到某个节点继续写
+- `compact` 是把长历史压缩成更可控的上下文
 
-pi 的会话系统具有以下特点：
+## 六、pi 的设计哲学
 
-✅ 不可变历史（immutable history）  
-✅ 树结构分支（persistent tree）  
-✅ 文件级与树级分离  
-✅ 永不删除历史  
+pi 的会话系统有几个很明显的特点：
 
-这使得 pi 更像：
+- 不可变历史（immutable history）
+- 树结构分支（persistent tree）
+- 文件级与树级分离
+- 永不删除历史
+
+这让 pi 更像：
 
 > Git for conversations
 
----
+它的价值不只是“能继续聊”，而是“能保留所有演化路径”。
 
-# 七、一句话总结
+## 七、一句话总结
 
 - `/tree`：在当前会话里切换节点
 - `/fork`：复制出一个新的会话文件
@@ -245,7 +220,3 @@ pi 的会话系统具有以下特点：
 - `/new`：创建全新的会话
 
 理解这三层结构，就真正理解了 pi 的会话系统。
-
----
-
-（完）

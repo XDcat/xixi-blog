@@ -1,7 +1,3 @@
----
-canShare: true
----
-
 # 关于 pi agent 无法自主执行的思考
 
 ## 一、问题现象

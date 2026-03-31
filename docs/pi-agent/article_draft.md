@@ -3,10 +3,6 @@
 > 基于源码路径：`/home/xdcat/code/pi-mono/`
 > 本文专注：**system message 实际读取了哪些本地文件，以及哪些内容是内置文本**。
 
----
-canShare: true
----
-
 # 一、总链路入口
 
 ## 1️⃣ 构造入口
